@@ -4,21 +4,23 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --background-secondary: 210 40% 98%;
-  --foreground-secondary: 215.4 16.3% 46.9%;
-  --chat-user: 178 100% 29%;
-  --chat-user-foreground: 0 0% 100%;
-  --chat-assistant: 210 40% 96%;
+  --background: 0 0% 100%;           /* white */
+  --foreground: 222.2 84% 4.9%;      /* near black */
+  --primary: 221 83% 53%;            /* blue */
+  --primary-foreground: 0 0% 100%;   /* white */
+  --muted: 215.4 16.3% 56.9%;        /* gray-500 */
+  --border: 215 20% 65%;
+  --card: 210 40% 98%;               /* slate-50 */
+  --card-foreground: 222.2 84% 4.9%;
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 0 0% 100%;
-  --background-secondary: 215 28% 17%;
-  --foreground-secondary: 210 20% 85%;
-  --chat-user: 178 100% 45%;
-  --chat-user-foreground: 0 0% 100%;
-  --chat-assistant: 210 40% 70%;
+  --background: 222.2 84% 4.9%;       /* dark bg */
+  --foreground: 210 40% 98%;          /* light text */
+  --primary: 210 100% 60%;            /* lighter blue */
+  --primary-foreground: 222.2 84% 4.9%;
+  --muted: 215.4 16.3% 66.9%;
+  --border: 210 20% 30%;
+  --card: 224 71% 4%;                 /* deep gray */
+  --card-foreground: 210 40% 98%;
 }
