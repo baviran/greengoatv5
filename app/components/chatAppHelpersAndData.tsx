@@ -1,20 +1,22 @@
 import { Sun, Moon, PlusSquare, User, Settings, Trash2, Edit3, Bot, Send } from 'lucide-react';
+import { IconProps } from '../types/chat';
 
 // Helper component for icons
-export const Icon = ({ name, className, ...props }) => {
+export const Icon: React.FC<IconProps> = ({ name, className, ...props }) => {
     const icons = {
         sun: <Sun className={className} {...props} />,
-    moon: <Moon className={className} {...props} />,
-    plusSquare: <PlusSquare className={className} {...props} />,
-    user: <User className={className} {...props} />,
-    settings: <Settings className={className} {...props} />,
-    trash2: <Trash2 className={className} {...props} />,
-    edit3: <Edit3 className={className} {...props} />,
-    bot: <Bot className={className} {...props} />,
-    send: <Send className={className} {...props} />,
-};
+        moon: <Moon className={className} {...props} />,
+        plusSquare: <PlusSquare className={className} {...props} />,
+        user: <User className={className} {...props} />,
+        settings: <Settings className={className} {...props} />,
+        trash2: <Trash2 className={className} {...props} />,
+        edit3: <Edit3 className={className} {...props} />,
+        bot: <Bot className={className} {...props} />,
+        send: <Send className={className} {...props} />,
+    };
     return icons[name] || null;
 };
+
 // Mock Assistant Data
 export const assistantData = {
     id: 'asst_123xyz',
@@ -43,6 +45,4 @@ export const mockMessages = [
     { id: 'msg_t1_10', threadId: 'thread_1', sender: 'user', text: 'הבנתי, תודה על המידע המפורט!', timestamp: '14:05' },
     { id: 'msg_t1_11', threadId: 'thread_1', sender: 'assistant', text: 'בשמחה! יום נעים.', timestamp: '14:06' },
     { id: 'msg_t1_12', threadId: 'thread_1', sender: 'user', text: 'יום נעים גם לך!', timestamp: '14:07' },
-
-
 ];

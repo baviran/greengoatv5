@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { Icon } from './chatAppHelpersAndData'; // Assuming Icon is available
 import { mockThreads as threads } from './chatAppHelpersAndData'; // To check if threads exist
+import { MessageListProps } from '../types/chat';
 
-const MessageList = ({ messages, activeThreadId }) => {
+const MessageList: React.FC<MessageListProps> = ({ messages, activeThreadId }) => {
     const displayedMessages = messages.filter(msg => msg.threadId === activeThreadId);
-    const messagesEndRef = useRef(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

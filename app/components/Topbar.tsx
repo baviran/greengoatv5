@@ -1,7 +1,8 @@
 import React from 'react';
 import { Icon } from './chatAppHelpersAndData'; // Assuming Icon is in a separate file or defined above
+import { TopBarProps } from '../types/chat';
 
-const TopBar = ({ isDarkMode, toggleDarkMode }) => {
+const TopBar: React.FC<TopBarProps> = ({ isDarkMode, toggleDarkMode }) => {
     return (
         <div className="fixed top-0 left-0 right-0 h-16 bg-card border-b border-border flex items-center justify-between px-4 sm:px-6 z-50">
             <h1 className="text-foreground font-semibold text-lg">

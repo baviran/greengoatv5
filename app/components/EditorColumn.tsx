@@ -1,6 +1,6 @@
 import React from 'react';
 
-const EditorColumn = () => {
+const EditorColumn: React.FC = () => {
     return (
         <div className="h-full p-4 sm:p-6 bg-card border-l border-border rtl:border-r rtl:border-l-0 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
             <h2 className="text-card-foreground text-xl sm:text-2xl font-semibold mb-4">עורך תוכן</h2>

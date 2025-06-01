@@ -1,15 +1,16 @@
 import React from 'react';
 import { Icon, assistantData } from './chatAppHelpersAndData'; // Assuming Icon & assistantData are available
+import { SidebarProps } from '../types/chat';
 
-const Sidebar = ({ activeThreadId, setActiveThreadId, onNewChat, threads, setThreads }) => {
-    const handleThreadSelect = (threadId) => setActiveThreadId(threadId);
+const Sidebar: React.FC<SidebarProps> = ({ activeThreadId, setActiveThreadId, onNewChat, threads, setThreads }) => {
+    const handleThreadSelect = (threadId: string) => setActiveThreadId(threadId);
     const handleNewChat = () => {
         const newThread = { id: `thread_${Date.now()}`, title: 'שיחה חדשה #' + (threads.length + 1) };
         setThreads(prevThreads => [newThread, ...prevThreads]);
         setActiveThreadId(newThread.id);
         onNewChat(newThread.id);
     };
-    const handleDeleteThread = (e, threadIdToDelete) => {
+    const handleDeleteThread = (e: React.MouseEvent, threadIdToDelete: string) => {
         e.stopPropagation();
         const confirmDelete = window.confirm("האם אתה בטוח שברצונך למחוק שיחה זו?");
         if (confirmDelete) {
@@ -20,7 +21,7 @@ const Sidebar = ({ activeThreadId, setActiveThreadId, onNewChat, threads, setThr
             }
         }
     };
-    const handleEditThread = (e, threadIdToEdit) => {
+    const handleEditThread = (e: React.MouseEvent, threadIdToEdit: string) => {
         e.stopPropagation();
         const currentThread = threads.find(t => t.id === threadIdToEdit);
         const newTitle = window.prompt("עדכן כותרת שיחה:", currentThread?.title);

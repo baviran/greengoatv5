@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from './chatAppHelpersAndData'; // Assuming Icon is available
+import { MessageInputProps } from '../types/chat';
 
-const MessageInput = ({ onSendMessage, activeThreadId }) => {
+const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, activeThreadId }) => {
     const [message, setMessage] = useState('');
-    const textareaRef = useRef(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const handleSendMessage = () => {
         if (message.trim() && activeThreadId) {
             onSendMessage(message.trim());
@@ -11,7 +12,12 @@ const MessageInput = ({ onSendMessage, activeThreadId }) => {
             if (textareaRef.current) textareaRef.current.style.height = 'auto';
         }
     };
-    const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } };
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => { 
+        if (e.key === 'Enter' && !e.shiftKey) { 
+            e.preventDefault(); 
+            handleSendMessage(); 
+        } 
+    };
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -27,7 +33,7 @@ const MessageInput = ({ onSendMessage, activeThreadId }) => {
             <div className="flex items-end space-x-2 rtl:space-x-reverse">
         <textarea
             ref={textareaRef}
-            rows="1"
+            rows={1}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={activeThreadId ? "הקלד הודעה..." : "בחר שיחה כדי לשלוח הודעה"}
