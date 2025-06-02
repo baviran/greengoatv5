@@ -4,7 +4,7 @@ import ChatColumn from './ChatColumn'; // Assuming ChatColumn is in a separate f
 import EditorColumn from './EditorColumn'; // Assuming EditorColumn is in a separate file
 import { HomePageProps } from '../types/chat';
 
-const HomePage: React.FC<HomePageProps> = ({ isDarkMode, messages, activeThreadId, setActiveThreadId, onSendMessage, onNewChat, threads, setThreads }) => {
+const HomePage: React.FC<HomePageProps> = ({ messages, activeThreadId, setActiveThreadId, onSendMessage, onNewChat, threads, setThreads }) => {
     return (
         <div className={`pt-16 flex h-screen`}> {/* isDarkMode prop might be redundant if dark class on html is enough */}
             <Sidebar

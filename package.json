@@ -9,10 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "airtable": "^0.12.2",
+    "axios": "^1.9.0",
     "lucide-react": "^0.511.0",
     "next": "15.3.3",
+    "pino": "^9.7.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

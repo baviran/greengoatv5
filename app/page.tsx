@@ -1,37 +1,31 @@
 'use client'
 import React, { useState, useEffect } from 'react';
-import TopBar from './components/Topbar'; // Assuming TopBar is in a separate file
-import HomePage from './components/HomePage'; // Assuming HomePage is in a separate file
-import { mockThreads, mockMessages } from './components/chatAppHelpersAndData'; // Assuming mockData is available
+import TopBar from './components/Topbar';
+import HomePage from './components/HomePage';
+import { mockThreads, mockMessages } from './components/chatAppHelpersAndData';
+import { useThemeStore } from './lib/store/themeStore';
+import { Message } from './types/chat';
 
 // Main App Component (e.g., app/page.tsx for Next.js App Router)
 export default function Page() {
-    const [isDarkMode, setIsDarkMode] = useState(false);
+    const { value: theme, initializeTheme } = useThemeStore();
+    const isDarkMode = theme === 'dark';
     const [threads, setThreads] = useState(mockThreads);
-    const [messages, setMessages] = useState(mockMessages);
+    const [messages, setMessages] = useState<Message[]>(mockMessages as Message[]);
     const [activeThreadId, setActiveThreadId] = useState(threads.length > 0 ? threads[0].id : null);
 
     useEffect(() => {
-        const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const savedMode = localStorage.getItem('darkMode');
-        let currentMode = savedMode !== null ? (savedMode === 'true') : prefersDarkMode;
-
-        setIsDarkMode(currentMode);
-        if (currentMode) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        // Initialize theme from localStorage and apply it
+        initializeTheme();
         document.documentElement.dir = 'rtl';
-    }, []);
+    }, [initializeTheme]);
 
     useEffect(() => {
+        // Apply theme to document class
         if (isDarkMode) {
             document.documentElement.classList.add('dark');
-            localStorage.setItem('darkMode', 'true');
         } else {
             document.documentElement.classList.remove('dark');
-            localStorage.setItem('darkMode', 'false');
         }
     }, [isDarkMode]);
 
@@ -44,25 +38,24 @@ export default function Page() {
         }
     }, [threads, activeThreadId]);
 
-    const toggleDarkMode = () => setIsDarkMode(prevMode => !prevMode);
-
-    const handleSendMessage = (text) => {
+    const handleSendMessage = (text: string) => {
         if (!activeThreadId) return;
-        const newMessage = { id: `msg_${Date.now()}`, threadId: activeThreadId, sender: 'user', text: text, timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) };
+        const newMessage = { id: `msg_${Date.now()}`, threadId: activeThreadId, sender: 'user' as const, text: text, timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) };
         setMessages(prevMessages => [...prevMessages, newMessage]);
         setTimeout(() => {
-            const assistantResponse = { id: `msg_${Date.now() + 1}`, threadId: activeThreadId, sender: 'assistant', text: `קיבלתי: "${text.substring(0,20)}..."`, timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) };
+            const assistantResponse = { id: `msg_${Date.now() + 1}`, threadId: activeThreadId, sender: 'assistant' as const, text: `קיבלתי: "${text.substring(0,20)}..."`, timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) };
             setMessages(prevMessages => [...prevMessages, assistantResponse]);
         }, 1000);
     };
-    const handleNewChat = (newThreadId) => {
+    
+    const handleNewChat = (newThreadId: string) => {
         console.log("New chat:", newThreadId);
         // Potentially clear messages for the new thread or fetch them if this were a real app
     };
 
     return (
         <div className="bg-background text-foreground min-h-screen antialiased">
-            <TopBar isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+            <TopBar />
             <HomePage
                 isDarkMode={isDarkMode}
                 messages={messages}
