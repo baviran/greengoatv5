@@ -1,8 +1,5 @@
 import pino from 'pino';
 
-/**
- * Logger utility class for the application
- */
 export class Logger {
   private static instance: Logger;
   private logger: pino.Logger;

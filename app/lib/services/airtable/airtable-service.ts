@@ -32,12 +32,6 @@ export class AirtableService {
         return AirtableService.instance;
     }
 
-    /**
-     * Get all records from a table
-     * @param tableName Name of the table
-     * @param options Query options
-     * @returns Promise with records
-     */
     async getRecords(tableName: string, options?: any) {
         try {
             logger.info(`Fetching records from ${tableName}`);
@@ -52,13 +46,6 @@ export class AirtableService {
         }
     }
 
-
-    /**
-     * Get a single record by ID
-     * @param tableName Name of the table
-     * @param recordId ID of the record to retrieve
-     * @returns Promise with the record
-     */
     async getRecord(tableName: string, recordId: string) {
         try {
             logger.info(`Fetching record ${recordId} from ${tableName}`);
@@ -73,12 +60,6 @@ export class AirtableService {
         }
     }
 
-    /**
-     * Create a new record
-     * @param tableName Name of the table
-     * @param fields Fields to create
-     * @returns Promise with the created record
-     */
     async createRecord(tableName: string, fields: any) {
         try {
             logger.info(`Creating record in ${tableName}`);
@@ -93,13 +74,6 @@ export class AirtableService {
         }
     }
 
-    /**
-     * Update an existing record
-     * @param tableName Name of the table
-     * @param recordId ID of the record to update
-     * @param fields Fields to update
-     * @returns Promise with the updated record
-     */
     async updateRecord(tableName: string, recordId: string, fields: any) {
         try {
             logger.info(`Updating record ${recordId} in ${tableName}`);
@@ -114,12 +88,6 @@ export class AirtableService {
         }
     }
 
-    /**
-     * Delete a record
-     * @param tableName Name of the table
-     * @param recordId ID of the record to delete
-     * @returns Promise with the deleted record ID
-     */
     async deleteRecord(tableName: string, recordId: string) {
         try {
             logger.info(`Deleting record ${recordId} from ${tableName}`);
@@ -131,12 +99,6 @@ export class AirtableService {
         }
     }
 
-    /**
-     * Create multiple records in batch
-     * @param tableName Name of the table
-     * @param records Array of record fields to create
-     * @returns Promise with the created records
-     */
     async createRecords(tableName: string, records: any[]) {
         try {
             logger.info(`Creating ${records.length} records in ${tableName}`);
@@ -151,12 +113,6 @@ export class AirtableService {
         }
     }
 
-    /**
-     * Update multiple records in batch
-     * @param tableName Name of the table
-     * @param records Array of objects with id and fields to update
-     * @returns Promise with the updated records
-     */
     async updateRecords(tableName: string, records: Array<{id: string, fields: any}>) {
         try {
             logger.info(`Updating ${records.length} records in ${tableName}`);
@@ -173,10 +129,6 @@ export class AirtableService {
         }
     }
 
-    /**
-     * Get the schema of all tables in the base
-     * @returns Promise with the schema
-     */
     async getSchema(): Promise<AirtableSchema> {
         try{
             const response = await axios.get(
@@ -217,8 +169,6 @@ export class AirtableService {
         const schema=  await this.getSchema();
         return schema.tables.map(({id})=>id);
     }
-
-
 
     async getTableName(tableId:string): Promise<AirtableSchema> {
         try{
@@ -279,7 +229,6 @@ export class AirtableService {
             }
 
             logger.info(`Renaming field '${oldName}' to '${newName}' in table '${table.name}'`);
-// Inside updateColumnName, before const payload = ...
             logger.info(`Inspecting newName: "${newName}"`);
             let charCodes = '';
             for (let i = 0; i < newName.length; i++) {

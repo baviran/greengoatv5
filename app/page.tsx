@@ -6,7 +6,6 @@ import { mockThreads, mockMessages } from './components/chatAppHelpersAndData';
 import { useThemeStore } from './lib/store/themeStore';
 import { Message } from './types/chat';
 
-// Main App Component (e.g., app/page.tsx for Next.js App Router)
 export default function Page() {
     const { value: theme, initializeTheme } = useThemeStore();
     const isDarkMode = theme === 'dark';
@@ -15,13 +14,11 @@ export default function Page() {
     const [activeThreadId, setActiveThreadId] = useState(threads.length > 0 ? threads[0].id : null);
 
     useEffect(() => {
-        // Initialize theme from localStorage and apply it
         initializeTheme();
         document.documentElement.dir = 'rtl';
     }, [initializeTheme]);
 
     useEffect(() => {
-        // Apply theme to document class
         if (isDarkMode) {
             document.documentElement.classList.add('dark');
         } else {
@@ -30,10 +27,9 @@ export default function Page() {
     }, [isDarkMode]);
 
     useEffect(() => {
-        // If active thread is deleted, select the first available thread or null
         if (!threads.find(t => t.id === activeThreadId) && threads.length > 0) {
             setActiveThreadId(threads[0].id);
-        } else if (threads.length === 0) { // If all threads are deleted
+        } else if (threads.length === 0) {
             setActiveThreadId(null);
         }
     }, [threads, activeThreadId]);
@@ -50,7 +46,6 @@ export default function Page() {
     
     const handleNewChat = (newThreadId: string) => {
         console.log("New chat:", newThreadId);
-        // Potentially clear messages for the new thread or fetch them if this were a real app
     };
 
     return (

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Icon } from './chatAppHelpersAndData'; // Assuming Icon is available
-import { mockThreads as threads } from './chatAppHelpersAndData'; // To check if threads exist
+import { Icon } from './chatAppHelpersAndData';
+import { mockThreads as threads } from './chatAppHelpersAndData';
 import { MessageListProps } from '../types/chat';
 
 const MessageList: React.FC<MessageListProps> = ({ messages, activeThreadId }) => {

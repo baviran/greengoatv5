@@ -7,14 +7,12 @@ type ThemeStore = {
     initializeTheme: () => void;
 }
 
-// Helper function to get theme from localStorage
 const getStoredTheme = (): 'dark' | 'light' => {
-    if (typeof window === 'undefined') return 'light'; // SSR safety
+    if (typeof window === 'undefined') return 'light';
     const stored = localStorage.getItem('theme');
     return stored === 'dark' ? 'dark' : 'light';
 };
 
-// Helper function to save theme to localStorage
 const saveTheme = (theme: 'dark' | 'light') => {
     if (typeof window !== 'undefined') {
         localStorage.setItem('theme', theme);

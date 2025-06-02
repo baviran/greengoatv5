@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Icon } from './chatAppHelpersAndData'; // Assuming Icon is available
+import { Icon } from './chatAppHelpersAndData';
 import { MessageInputProps } from '../types/chat';
 
 const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, activeThreadId }) => {

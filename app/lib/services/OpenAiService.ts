@@ -1,4 +1,3 @@
-// src/lib/services/OpenAIService.ts
 import type { Message } from '@/types/app';
 import {Logger} from "@/app/lib/utils/logger";
 

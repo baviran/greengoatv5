@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon } from './chatAppHelpersAndData'; // Assuming Icon is in a separate file or defined above
+import { Icon } from './chatAppHelpersAndData';
 import { useThemeStore } from '../lib/store/themeStore';
 
 const TopBar: React.FC = () => {
@@ -16,7 +16,6 @@ const TopBar: React.FC = () => {
                 aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
                 className="p-2 rounded-md text-foreground hover:bg-muted"
             >
-                {/* Icons might need specific colors if not inheriting correctly or if --foreground is too dark/light for them */}
                 {isDarkMode ? <Icon name="sun" className="w-6 h-6 text-yellow-400" /> : <Icon name="moon" className="w-6 h-6 text-slate-700" />}
             </button>
         </div>

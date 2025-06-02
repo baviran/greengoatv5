@@ -1,4 +1,3 @@
-// src/lib/services/threadService.ts
 import type { ThreadPreview } from '@/types/app';
 
 const THREAD_PREVIEWS_KEY = 'chatThreadPreviews_v3';

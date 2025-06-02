@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon, assistantData } from './chatAppHelpersAndData'; // Assuming Icon & assistantData are available
+import { Icon, assistantData } from './chatAppHelpersAndData';
 import { SidebarProps } from '../types/chat';
 
 const Sidebar: React.FC<SidebarProps> = ({ activeThreadId, setActiveThreadId, onNewChat, threads, setThreads }) => {

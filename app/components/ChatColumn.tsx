@@ -1,6 +1,6 @@
 import React from 'react';
-import MessageList from './MessageList'; // Assuming MessageList is in a separate file
-import MessageInput from './MessageInput'; // Assuming MessageInput is in a separate file
+import MessageList from './MessageList';
+import MessageInput from './MessageInput';
 import { ChatColumnProps } from '../types/chat';
 
 const ChatColumn: React.FC<ChatColumnProps> = ({ messages, activeThreadId, onSendMessage }) => {

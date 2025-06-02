@@ -1,5 +1,3 @@
-// Types for the chat application components
-
 export interface Message {
   id: string;
   threadId: string;

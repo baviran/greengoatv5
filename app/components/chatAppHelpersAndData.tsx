@@ -1,7 +1,6 @@
 import { Sun, Moon, PlusSquare, User, Settings, Trash2, Edit3, Bot, Send } from 'lucide-react';
 import { IconProps } from '../types/chat';
 
-// Helper component for icons
 export const Icon: React.FC<IconProps> = ({ name, className, ...props }) => {
     const icons = {
         sun: <Sun className={className} {...props} />,
@@ -17,22 +16,18 @@ export const Icon: React.FC<IconProps> = ({ name, className, ...props }) => {
     return icons[name] || null;
 };
 
-// Mock Assistant Data
 export const assistantData = {
     id: 'asst_123xyz',
     name: 'עוזר וירטואלי',
     description: 'אני כאן כדי לעזור לך עם כל שאלה שיש לך.',
 };
 
-// Mock Threads Data (Expanded)
 export const mockThreads = [
     { id: 'thread_1', title: 'דיון על מזג האוויר הנוכחי' },
     { id: 'thread_2', title: 'מתכונים מהירים לארוחת ערב קלה' },
 ];
 
-// Mock Messages Data (Expanded)
 export const mockMessages = [
-    // Thread 1
     { id: 'msg_t1_1', threadId: 'thread_1', sender: 'user', text: 'היי, מה התחזית להיום?', timestamp: '09:30' },
     { id: 'msg_t1_2', threadId: 'thread_1', sender: 'assistant', text: 'היום צפוי להיות חם מהרגיל עם טמפרטורות גבוהות.', timestamp: '09:31' },
     { id: 'msg_t1_3', threadId: 'thread_1', sender: 'user', text: 'האם יש סיכוי לגשם?', timestamp: '09:32' },
