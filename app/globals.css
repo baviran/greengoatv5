@@ -4,23 +4,23 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;           /* white */
-  --foreground: 222.2 84% 4.9%;      /* near black */
-  --primary: 221 83% 53%;            /* blue */
-  --primary-foreground: 0 0% 100%;   /* white */
-  --muted: 215.4 16.3% 56.9%;        /* gray-500 */
-  --border: 215 20% 65%;
-  --card: 210 40% 98%;               /* slate-50 */
-  --card-foreground: 222.2 84% 4.9%;
+  --background: 60 50% 98%;           /* #FAFFCA - Very light yellow-green background */
+  --foreground: 170 17% 25%;          /* #3A5854 - Dark version of #5A827E for text */
+  --primary: 170 17% 44%;             /* #5A827E - Dark teal for primary actions */
+  --primary-foreground: 60 50% 98%;   /* #FAFFCA - Light text on primary */
+  --muted: 140 20% 72%;               /* #B9D4AA - Light green for muted elements */
+  --border: 140 20% 65%;              /* Slightly darker version of light green */
+  --card: 60 50% 96%;                 /* Slightly darker version of background */
+  --card-foreground: 170 17% 25%;     /* Same as foreground for consistency */
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;       /* dark bg */
-  --foreground: 210 40% 98%;          /* light text */
-  --primary: 210 100% 60%;            /* lighter blue */
-  --primary-foreground: 222.2 84% 4.9%;
-  --muted: 215.4 16.3% 66.9%;
-  --border: 210 20% 30%;
-  --card: 224 71% 4%;                 /* deep gray */
-  --card-foreground: 210 40% 98%;
+  --background: 216 16% 14%;          /* #222831 - Dark charcoal background */
+  --foreground: 0 0% 93%;             /* #EEEEEE - Light gray text */
+  --primary: 215 14% 20%;             /* #31363F - Darker gray for primary actions */
+  --primary-foreground: 0 0% 93%;     /* #EEEEEE - Light text on primary */
+  --muted: 182 22% 57%;               /* #76ABAE - Teal blue for muted elements */
+  --border: 215 14% 35%;              /* Lighter border for visibility in dark mode */
+  --card: 215 14% 22%;                /* Slightly lighter than primary for cards */
+  --card-foreground: 0 0% 93%;        /* #EEEEEE - Light text on cards */
 }

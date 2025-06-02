@@ -18,6 +18,8 @@ const config: Config = {
         border: 'hsl(var(--border))',
         card: 'hsl(var(--card))',
         'card-foreground': 'hsl(var(--card-foreground))',
+        accent: '#84AE92', // Medium green for light theme
+        'accent-dark': '#76ABAE', // Teal blue for dark theme
       },
     },
   },

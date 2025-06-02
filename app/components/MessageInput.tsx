@@ -54,7 +54,7 @@ const MessageInput: React.FC = () => {
                 <button
                     onClick={handleSendMessage}
                     disabled={!message.trim() || isDisabled}
-                    className="p-3 h-[44px] w-[44px] sm:h-[48px] sm:w-[48px] flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-3 h-[44px] w-[44px] sm:h-[48px] sm:w-[48px] flex items-center justify-center rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                     aria-label="Send message"
                 >
                     {isSending ? (

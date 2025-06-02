@@ -44,7 +44,7 @@ const Sidebar: React.FC = () => {
             <button
                 onClick={handleNewChat}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-150 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors duration-150 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
                 {isLoading ? (
                     <Icon name="loader2" className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
@@ -62,12 +62,12 @@ const Sidebar: React.FC = () => {
                         onClick={() => handleThreadSelect(thread.id)}
                         className={`p-2 sm:p-2.5 rounded-md cursor-pointer group ${
                             activeThreadId === thread.id
-                                ? 'bg-primary text-primary-foreground'
+                                ? 'bg-accent text-white'
                                 : 'bg-muted text-foreground/80 hover:bg-muted/80 hover:text-card-foreground'
                         }`}
                     >
                         <div className="flex justify-between items-center">
-                            <p className={`text-xs sm:text-sm truncate ${activeThreadId === thread.id ? 'text-primary-foreground' : 'group-hover:text-card-foreground'}`}>{thread.title}</p>
+                            <p className={`text-xs sm:text-sm truncate ${activeThreadId === thread.id ? 'text-white' : 'group-hover:text-card-foreground'}`}>{thread.title}</p>
                             <div className="flex space-x-1 rtl:space-x-reverse opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={(e) => handleDeleteThread(e, thread.id)} className="p-1 rounded text-red-500 hover:bg-red-500/10" aria-label="Delete thread">
                                     <Icon name="trash2" className="w-3 h-3 sm:w-3.5 sm:h-3.5" />

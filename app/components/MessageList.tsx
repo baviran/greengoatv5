@@ -37,13 +37,13 @@ const MessageList: React.FC = () => {
                 const isUser = msg.sender === 'user';
                 const messageAlignment = isUser ? 'justify-start' : 'justify-end';
 
-                const messageBgClass = isUser ? 'bg-primary' : 'bg-card';
-                const messageTextColorClass = isUser ? 'text-primary-foreground' : 'text-card-foreground';
+                const messageBgClass = isUser ? 'bg-accent' : 'bg-card';
+                const messageTextColorClass = isUser ? 'text-white' : 'text-card-foreground';
 
                 const borderRadius = isUser ? 'rounded-xl rounded-bl-none' : 'rounded-xl rounded-br-none';
 
                 const iconName = isUser ? 'user' : 'bot';
-                const timestampColorClass = isUser ? 'text-primary-foreground/80' : 'text-card-foreground/70';
+                const timestampColorClass = isUser ? 'text-white/80' : 'text-card-foreground/70';
 
                 const iconElement = (
                     <div className={`flex-shrink-0 ${isUser ? 'mr-2 rtl:ml-2 rtl:mr-0' : 'ml-2 rtl:mr-2 rtl:ml-0'}`}>
