@@ -5,13 +5,12 @@ export class Logger {
   private logger: pino.Logger;
 
   private constructor() {
+    // Configure logger for Next.js server environment
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     this.logger = pino({
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-        },
-      },
+      level: isProduction ? 'info' : 'debug',
+      timestamp: pino.stdTimeFunctions.isoTime,
     });
   }
 

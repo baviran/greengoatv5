@@ -1,29 +1,27 @@
 import React, { useEffect, useRef } from 'react';
 import { Icon } from './chatAppHelpersAndData';
-import { mockThreads as threads } from './chatAppHelpersAndData';
-import { MessageListProps } from '../types/chat';
+import { useChatStore } from '../lib/store/chatStore';
 
-const MessageList: React.FC<MessageListProps> = ({ messages, activeThreadId }) => {
-    const displayedMessages = messages.filter(msg => msg.threadId === activeThreadId);
+const MessageList: React.FC = () => {
+    const { activeThreadId, getMessagesForThread } = useChatStore();
+    const messages = activeThreadId ? getMessagesForThread(activeThreadId) : [];
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [displayedMessages]);
+    }, [messages]);
 
-    if (!activeThreadId && threads.length > 0) {
-        return <div className="flex-grow flex items-center justify-center p-4"><p className="text-foreground/70">בחר שיחה מהרשימה כדי להציג הודעות.</p></div>;
+    if (!activeThreadId) {
+        return <div className="flex-grow flex items-center justify-center p-4"><p className="text-foreground/70">בחר שיחה מהרשימה כדי להציג הודעות או התחל שיחה חדשה.</p></div>;
     }
-    if (!activeThreadId && threads.length === 0) {
-        return <div className="flex-grow flex items-center justify-center p-4"><p className="text-foreground/70">התחל שיחה חדשה.</p></div>;
-    }
-    if (displayedMessages.length === 0 && activeThreadId) {
+    
+    if (messages.length === 0 && activeThreadId) {
         return <div className="flex-grow flex items-center justify-center p-4"><p className="text-foreground/70">אין הודעות בשיחה זו. שלח הודעה כדי להתחיל!</p></div>;
     }
 
     return (
         <div className="flex-grow p-3 sm:p-4 space-y-3 sm:space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent bg-background" dir="rtl">
-            {displayedMessages.map(msg => {
+            {messages.map(msg => {
                 const isUser = msg.sender === 'user';
                 const messageAlignment = isUser ? 'justify-start' : 'justify-end';
 
@@ -45,7 +43,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages, activeThreadId }) =
                     <div className="flex-grow min-w-0">
                         <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
                         <p className={`text-xs mt-1 ${timestampColorClass} ${isUser ? 'text-right rtl:text-left' : 'text-left rtl:text-right'}`}>
-                            {msg.timestamp}
+                            {new Date(msg.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                     </div>
                 );

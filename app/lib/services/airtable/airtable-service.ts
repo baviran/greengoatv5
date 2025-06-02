@@ -1,9 +1,16 @@
 import Airtable, { Base } from 'airtable';
 import { Logger } from '@/app/lib/utils/logger';
 import axios from "axios";
+import https from 'https';
 import {AirtableSchema} from "@/app/types/airtable";
 
 const logger = Logger.getInstance();
+
+// Create HTTPS agent to handle SSL certificate issues
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false
+});
+
 export class AirtableService {
     private static instance: AirtableService;
 
@@ -32,16 +39,26 @@ export class AirtableService {
         return AirtableService.instance;
     }
 
-    async getRecords(tableName: string, options?: any) {
+    async getRecords(tableId: string, filterByFormula?: string): Promise<any[]> {
         try {
-            logger.info(`Fetching records from ${tableName}`);
-            const records = await this.base(tableName).select(options).all();
-            return records.map(record => ({
+            let url = `https://api.airtable.com/v0/${this.baseId}/${tableId}`;
+            if (filterByFormula) {
+                url += `?filterByFormula=${encodeURIComponent(filterByFormula)}`;
+            }
+
+            const response = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`
+                },
+                httpsAgent: httpsAgent
+            });
+
+            return response.data.records.map((record: { id: string; fields: any }) => ({
                 id: record.id,
                 ...record.fields
             }));
         } catch (error) {
-            logger.error(`Error fetching records from ${tableName}:`, error);
+            logger.error('Error fetching records:', error);
             throw error;
         }
     }
@@ -60,16 +77,26 @@ export class AirtableService {
         }
     }
 
-    async createRecord(tableName: string, fields: any) {
+    async createRecord(tableId: string, fields: Record<string, any>): Promise<any> {
         try {
-            logger.info(`Creating record in ${tableName}`);
-            const record = await this.base(tableName).create(fields);
+            const response = await axios.post(
+                `https://api.airtable.com/v0/${this.baseId}/${tableId}`,
+                { fields },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${this.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    httpsAgent: httpsAgent
+                }
+            );
+
             return {
-                id: record.id,
-                ...record.fields
+                id: response.data.id,
+                ...response.data.fields
             };
         } catch (error) {
-            logger.error(`Error creating record in ${tableName}:`, error);
+            logger.error('Error creating record:', error);
             throw error;
         }
     }
@@ -130,19 +157,20 @@ export class AirtableService {
     }
 
     async getSchema(): Promise<AirtableSchema> {
-        try{
-            const response = await axios.get(
-                `https://api.airtable.com/v0/meta/bases/${this.baseId}/tables`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.apiKey}`
-                    }
-                }
-            );
-            return response.data as AirtableSchema;
-        }
-        catch (error) {
-            logger.error(`Error getSchema records }:`, error);
+        const baseId = this.baseId;
+        const url = `https://api.airtable.com/v0/meta/bases/${baseId}/tables`;
+
+        try {
+            const response = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                },
+                httpsAgent: httpsAgent
+            });
+
+            return response.data;
+        } catch (error) {
+            logger.error(error, 'Error fetching schema:');
             throw error;
         }
     }
@@ -170,41 +198,45 @@ export class AirtableService {
         return schema.tables.map(({id})=>id);
     }
 
-    async getTableName(tableId:string): Promise<AirtableSchema> {
-        try{
+    async getTableName(tableId: string): Promise<{ id: string; name: string }> {
+        try {
             const response = await axios.get(
                 `https://api.airtable.com/v0/meta/bases/${this.baseId}/tables/${tableId}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${this.apiKey}`
-                    }
+                    },
+                    httpsAgent: httpsAgent
                 }
             );
-            return response.data as AirtableSchema;
+            return response.data;
         }
         catch (error) {
-            logger.error(`Error getTableName  }:`, error);
+            logger.error(`Error getTableName:`, error);
             throw error;
         }
     }
-    async renameTableName(tableId:string,name:string): Promise<AirtableSchema> {
-        try{
+
+    async renameTableName(tableId: string, name: string): Promise<{ id: string; name: string }> {
+        try {
             const response = await axios.patch(
                 `https://api.airtable.com/v0/meta/bases/${this.baseId}/tables/${tableId}`,
-                {name},
+                { name },
                 {
                     headers: {
                         'Authorization': `Bearer ${this.apiKey}`
-                    }
+                    },
+                    httpsAgent: httpsAgent
                 }
             );
-            return response.data as AirtableSchema;
+            return response.data;
         }
         catch (error) {
-            logger.error(`Error renameTableName  }:`, error);
+            logger.error(`Error renameTableName:`, error);
             throw error;
         }
     }
+
     async updateColumnName(tableId: string, oldName: string, newName: string): Promise<void> {
         try {
             const tables = (await this.getSchema()).tables;
@@ -244,7 +276,8 @@ export class AirtableService {
                     headers: {
                         Authorization: `Bearer ${this.apiKey}`,
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    httpsAgent
                 }
             );
 
@@ -257,13 +290,15 @@ export class AirtableService {
             throw error;
         }
     }
+
     async updateAllBaseTableColumnNames(){
         const tableIds = await this.getTableIds();
         for (const tableId of tableIds){
             await this.updateTableColumnNames(tableId);
         }
     }
-    async updateTableColumnNames(tableId:string){
+
+    async updateTableColumnNames(tableId: string) {
         const renameMap: Record<string, string> = {
             'שם סעיף': 'שם סעיף - clause name',
             'תת סעיף': 'תת סעיף - sub clause',
@@ -279,11 +314,13 @@ export class AirtableService {
             'הצהרה לשלב מקדמי': 'הצהרה לשלב המקדמי - preliminary phase declaration',
             'יועץ אחראי': 'יועץ אחראי - responsible consultant'
         };
+        
         for (const [oldName, newName] of Object.entries(renameMap)) {
             try {
-                await this.updateColumnName(tableId, newName, oldName);
+                await this.updateColumnName(tableId, oldName, newName);
+                logger.info(`Successfully renamed column '${oldName}' to '${newName}' in table '${tableId}'`);
             } catch (err) {
-                logger.error(`Failed to rename '${oldName}' to '${newName}' in table '${tableId}'`);
+                logger.error(`Failed to rename '${oldName}' to '${newName}' in table '${tableId}'`, err);
             }
         }
     }

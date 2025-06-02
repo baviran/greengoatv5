@@ -1,38 +1,31 @@
 import React from 'react';
 import { Icon, assistantData } from './chatAppHelpersAndData';
-import { SidebarProps } from '../types/chat';
+import { useChatStore } from '../lib/store/chatStore';
 
-const Sidebar: React.FC<SidebarProps> = ({ activeThreadId, setActiveThreadId, onNewChat, threads, setThreads }) => {
-    const handleThreadSelect = (threadId: string) => setActiveThreadId(threadId);
-    const handleNewChat = () => {
-        const newThread = { id: `thread_${Date.now()}`, title: 'שיחה חדשה #' + (threads.length + 1) };
-        setThreads(prevThreads => [newThread, ...prevThreads]);
-        setActiveThreadId(newThread.id);
-        onNewChat(newThread.id);
+const Sidebar: React.FC = () => {
+    const { 
+        threads, 
+        activeThreadId, 
+        setActiveThread, 
+        updateThread, 
+        deleteThread, 
+        createNewThread 
+    } = useChatStore();
+
+    const handleThreadSelect = (threadId: string) => setActiveThread(threadId);
+    
+    const handleNewChat = async () => {
+        await createNewThread();
     };
-    const handleDeleteThread = (e: React.MouseEvent, threadIdToDelete: string) => {
+    
+    const handleDeleteThread = async (e: React.MouseEvent, threadIdToDelete: string) => {
         e.stopPropagation();
         const confirmDelete = window.confirm("האם אתה בטוח שברצונך למחוק שיחה זו?");
         if (confirmDelete) {
-            setThreads(prevThreads => prevThreads.filter(thread => thread.id !== threadIdToDelete));
-            if (activeThreadId === threadIdToDelete) {
-                const remainingThreads = threads.filter(t => t.id !== threadIdToDelete);
-                setActiveThreadId(remainingThreads.length > 0 ? remainingThreads[0].id : null);
-            }
+            deleteThread(threadIdToDelete);
         }
     };
-    const handleEditThread = (e: React.MouseEvent, threadIdToEdit: string) => {
-        e.stopPropagation();
-        const currentThread = threads.find(t => t.id === threadIdToEdit);
-        const newTitle = window.prompt("עדכן כותרת שיחה:", currentThread?.title);
-        if (newTitle && newTitle.trim() !== "") {
-            setThreads(prevThreads =>
-                prevThreads.map(thread =>
-                    thread.id === threadIdToEdit ? { ...thread, title: newTitle.trim() } : thread
-                )
-            );
-        }
-    };
+
 
     return (
         <div className="fixed top-16 bottom-0 right-0 w-64 sm:w-72 bg-card border-l border-border flex flex-col p-3 sm:p-4 space-y-3 sm:space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
@@ -70,9 +63,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeThreadId, setActiveThreadId, on
                         <div className="flex justify-between items-center">
                             <p className={`text-xs sm:text-sm truncate ${activeThreadId === thread.id ? 'text-primary-foreground' : 'group-hover:text-card-foreground'}`}>{thread.title}</p>
                             <div className="flex space-x-1 rtl:space-x-reverse opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={(e) => handleEditThread(e, thread.id)} className={`p-1 rounded hover:bg-muted/50 ${activeThreadId === thread.id ? 'text-primary-foreground hover:bg-primary/80' : 'text-foreground/70'}`} aria-label="Edit thread title">
-                                    <Icon name="edit3" className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                                </button>
                                 <button onClick={(e) => handleDeleteThread(e, thread.id)} className="p-1 rounded text-red-500 hover:bg-red-500/10" aria-label="Delete thread">
                                     <Icon name="trash2" className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                                 </button>
@@ -85,10 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeThreadId, setActiveThreadId, on
             </div>
 
             <div className="mt-auto pt-3 sm:pt-4 border-t border-border">
-                <button className="w-full flex items-center space-x-2 rtl:space-x-reverse py-1.5 sm:py-2 px-2 sm:px-3 rounded-md text-card-foreground hover:bg-muted">
-                    <Icon name="settings" className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-xs sm:text-sm">הגדרות</span>
-                </button>
+                <span className="text-xs sm:text-sm">כל הזכויות שמורות</span>
             </div>
         </div>
     );

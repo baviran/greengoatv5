@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from './chatAppHelpersAndData';
-import { MessageInputProps } from '../types/chat';
+import { useChatStore } from '../lib/store/chatStore';
 
-const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, activeThreadId }) => {
+const MessageInput: React.FC = () => {
+    const { activeThreadId, sendMessage } = useChatStore();
     const [message, setMessage] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const handleSendMessage = () => {
-        if (message.trim() && activeThreadId) {
-            onSendMessage(message.trim());
+    
+    const handleSendMessage = async () => {
+        if (message.trim()) {
+            await sendMessage(message.trim());
             setMessage('');
             if (textareaRef.current) textareaRef.current.style.height = 'auto';
         }
     };
+    
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => { 
         if (e.key === 'Enter' && !e.shiftKey) { 
             e.preventDefault(); 
@@ -36,15 +39,14 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, activeThread
             rows={1}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder={activeThreadId ? "הקלד הודעה..." : "בחר שיחה כדי לשלוח הודעה"}
+            placeholder="הקלד הודעה..."
             className="flex-grow p-3 border border-border rounded-lg resize-none focus:ring-2 focus:ring-primary outline-none bg-background text-foreground text-sm max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-muted min-h-[44px] sm:min-h-[48px]"
             onKeyDown={handleKeyDown}
-            disabled={!activeThreadId}
             style={{ scrollbarWidth: 'thin' }}
         />
                 <button
                     onClick={handleSendMessage}
-                    disabled={!activeThreadId || !message.trim()}
+                    disabled={!message.trim()}
                     className="p-3 h-[44px] w-[44px] sm:h-[48px] sm:w-[48px] flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Send message"
                 >
