@@ -9,7 +9,8 @@ const Sidebar: React.FC = () => {
         setActiveThread, 
         updateThread, 
         deleteThread, 
-        createNewThread 
+        createNewThread,
+        isLoading
     } = useChatStore();
 
     const handleThreadSelect = (threadId: string) => setActiveThread(threadId);
@@ -42,10 +43,15 @@ const Sidebar: React.FC = () => {
 
             <button
                 onClick={handleNewChat}
-                className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-150 text-sm sm:text-base"
+                disabled={isLoading}
+                className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-150 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                <Icon name="plusSquare" className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>צ'אט חדש</span>
+                {isLoading ? (
+                    <Icon name="loader2" className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                ) : (
+                    <Icon name="plusSquare" className="w-4 h-4 sm:w-5 sm:h-5" />
+                )}
+                <span>{isLoading ? 'יוצר שיחה...' : 'צ\'אט חדש'}</span>
             </button>
 
             <div className="flex-grow space-y-1.5 overflow-y-auto pr-1 rtl:pl-1 rtl:pr-0">

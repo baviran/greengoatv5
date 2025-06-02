@@ -47,7 +47,7 @@ export interface ThreadData {
 }
 
 export interface IconProps {
-  name: 'sun' | 'moon' | 'plusSquare' | 'user' | 'settings' | 'trash2' | 'edit3' | 'bot' | 'send';
+  name: 'sun' | 'moon' | 'plusSquare' | 'user' | 'settings' | 'trash2' | 'edit3' | 'bot' | 'send' | 'loader2';
   className?: string;
   [key: string]: any;
 }
