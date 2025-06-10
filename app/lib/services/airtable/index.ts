@@ -1,8 +1,17 @@
-import { AirtableService } from './airtable-service';
+import {AirtableService} from "@/app/lib/services/airtable/airtable-service";
 
-const DEFAULT_BASE_ID = process.env.AIRTABLE_BASE_ID || 'appG42qzOWosdKmnU';
-if (!DEFAULT_BASE_ID) {
-    throw new Error('Missing AIRTABLE_BASE_ID in environment variables');
+let instance: AirtableService | null = null;
+
+export function getAirtableService(): AirtableService {
+    if (!instance) {
+        const baseId = process.env.AIRTABLE_BASE;
+        const apiKey = process.env.AIRTABLE_API_KEY;
+
+        if (!apiKey || !baseId) {
+            throw new Error('Missing AIRTABLE_API_KEY or AIRTABLE_BASE in environment variables');
+        }
+
+        instance = AirtableService.getInstance(baseId);
+    }
+    return instance;
 }
-
-export const airtableService = AirtableService.getInstance(DEFAULT_BASE_ID);

@@ -3,7 +3,7 @@ import { Icon } from './chatAppHelpersAndData';
 import { useChatStore } from '../lib/store/chatStore';
 
 const MessageInput: React.FC = () => {
-    const { activeThreadId, sendMessage, isLoading, isSending } = useChatStore();
+    const { sendMessage, isLoading, isSending } = useChatStore();
     const [message, setMessage] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     

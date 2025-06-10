@@ -8,7 +8,7 @@ const EditorColumn: React.FC = () => {
                 <p className="text-foreground/70 text-sm">כאן יוצג תוכן לעריכה או מידע נוסף.</p>
                 <textarea
                     className="w-full mt-4 p-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary outline-none text-sm"
-                    rows="'5'"
+                    rows={5}
                     defaultValue="אפשר להתחיל לכתוב כאן..."
                     aria-label="Content editor"
                 ></textarea>

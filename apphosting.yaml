@@ -1,0 +1,19 @@
+runConfig:
+  runtime: nodejs20
+
+env:
+  - variable: OPENAI_API_KEY
+    secret: OPENAI_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: AIRTABLE_API_KEY
+    secret: AIRTABLE_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: AIRTABLE_BASE
+    secret: AIRTABLE_BASE
+    availability:
+      - BUILD
+      - RUNTIME

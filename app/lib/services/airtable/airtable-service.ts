@@ -170,7 +170,10 @@ export class AirtableService {
 
             return response.data;
         } catch (error) {
-            logger.error(error, 'Error fetching schema:');
+            logger.error(
+                error instanceof Error ? error.message : String(error),
+                'Error fetching schema:'
+            );
             throw error;
         }
     }
@@ -249,8 +252,9 @@ export class AirtableService {
             logger.info(`Looking for field with exact name: '${oldName}'`);
             logger.info('Available field names:');
             table.fields.forEach(f => logger.info(`'${f.name}'`));
-            const field = table.fields.find(f => f.name === oldName);
-
+            const field =
+                table.fields.find(f => f.name === oldName) ??
+                table.fields.find(f => f.name.toLowerCase() === oldName.toLowerCase());
             if (!field) {
                 logger.info(`Field name not found using strict match. Trying locale-insensitive match.`);
                 const fuzzy = table.fields.find(f => f.name.toLowerCase() === oldName.toLowerCase());
@@ -268,9 +272,9 @@ export class AirtableService {
             }
             logger.info(`Char codes for newName: ${charCodes.trim()}`);
             const payload = { name: newName };
-            logger.info(`PATCHing field '${field.id}' in table '${tableId}' with name '${newName}'`);
+            logger.info(`PATCHing field '${field?.id}' in table '${tableId}' with name '${newName}'`);
             await axios.patch(
-                `https://api.airtable.com/v0/meta/bases/${this.baseId}/tables/${tableId}/fields/${field.id}`,
+                `https://api.airtable.com/v0/meta/bases/${this.baseId}/tables/${tableId}/fields/${field?.id}`,
                 payload,
                 {
                     headers: {

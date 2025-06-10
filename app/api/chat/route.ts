@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import { getClauseData } from '@/app/lib/services/assistant';
 import { Logger } from '@/app/lib/utils/logger';
 
@@ -12,25 +11,22 @@ import {
     isSubmitToolOutputsAction,
     isTextContent
 } from '@/app/types/openai';
+import {OpenAIService} from "@/app/lib/services/openai";
 
+let openai: OpenAIService;
 
 const logger = Logger.getInstance();
-
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
 
 
 
 async function getOrCreateThread(existingThreadId?: string): Promise<string> {
-    // Check if threadId is valid (not undefined, null, empty string, or the string 'undefined')
     if (existingThreadId && existingThreadId !== 'undefined' && existingThreadId.trim() !== '') {
         logger.info(`Using existing thread ID: ${existingThreadId}`);
         return existingThreadId;
     }
-    
     logger.info(`Creating new thread (received threadId: ${existingThreadId})`);
-    const thread = await openai.beta.threads.create();
+    const thread =await openai.createThread();
+
     logger.info(`Created new thread with ID: ${thread.id}`);
     return thread.id;
 }
@@ -54,7 +50,7 @@ async function executeToolCall(
     let output: any;
 
     if (functionName === 'get_clause_table') {
-        const clause = functionArgs.clause;
+        const clause = (functionArgs.clause as string);
         if (clause) {
             output = await getClauseData(clause);
         } else {
@@ -91,10 +87,7 @@ async function handleRequiredActions(
     );
 
     if (toolOutputs.length > 0) {
-        await openai.beta.threads.runs.submitToolOutputs(run.id, {
-            thread_id: threadId,
-            tool_outputs: toolOutputs,
-        });
+        await openai.submitToolOutputs(threadId,run.id,toolOutputs);
         logger.info(`Submitted ${toolOutputs.length} tool output(s) for run ${run.id}`);
     } else {
         logger.warn(`No tool outputs generated for run ${run.id} despite requires_action (submit_tool_outputs).`);
@@ -102,7 +95,7 @@ async function handleRequiredActions(
 }
 
 async function getAssistantFinalResponse(threadId: string, runId: string): Promise<string | null> {
-    const messages = await openai.beta.threads.messages.list(threadId, { order: 'asc' });
+    const messages = await openai.listMessages(threadId);
     const lastUserMessageIndex = messages.data.map(m => m.role).lastIndexOf('user');
     const assistantMessages = messages.data
         .slice(lastUserMessageIndex + 1)
@@ -124,9 +117,7 @@ async function processRun(
     threadId: string,
     runId: string
 ): Promise<string | null> {
-    let run: AssistantRun = await openai.beta.threads.runs.retrieve(runId, {
-        thread_id: threadId,
-    });
+    let run = await openai.retrieveRun(threadId,runId);
     let attempt = 0;
     const maxAttempts = 20;
 
@@ -141,9 +132,7 @@ async function processRun(
         if (run.status !== 'requires_action') {
             await new Promise(resolve => setTimeout(resolve, 1000 + (attempt * 100)));
         }
-        run = await openai.beta.threads.runs.retrieve(runId, {
-            thread_id: threadId,
-        });
+        run = await openai.retrieveRun(threadId,runId);
     }
 
     if (attempt >= maxAttempts && isActiveRunStatus(run.status)) {
@@ -167,6 +156,7 @@ async function processRun(
 
 export async function POST(req: NextRequest) {
     try {
+        openai = OpenAIService.getInstance();
         const body = await req.json();
         const { message, threadId: existingThreadId, assistantId } = body;
 
@@ -180,16 +170,9 @@ export async function POST(req: NextRequest) {
         logger.info(`Received message: "${message}", Thread ID: ${existingThreadId}, Assistant ID: ${assistantId}`);
 
         const threadId = await getOrCreateThread(existingThreadId);
-
-        await openai.beta.threads.messages.create(threadId, {
-            role: 'user',
-            content: message,
-        });
+        await openai.sendMessageToThread(threadId,message);
         logger.info(`Added message to thread ${threadId}`);
-
-        const initialRun: AssistantRun = await openai.beta.threads.runs.create(threadId, {
-            assistant_id: assistantId,
-        });
+        const initialRun = await openai.runAssistantOnThread(threadId,assistantId);
         logger.info(`Created initial run ${initialRun.id} for thread ${threadId}`);
 
         const assistantResponse = await processRun(threadId, initialRun.id);

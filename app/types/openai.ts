@@ -1,11 +1,14 @@
 import type OpenAI from 'openai';
 
+export type RunToolOutput = {
+    tool_call_id: string;
+    output: string;
+};
 export type AssistantRun = OpenAI.Beta.Threads.Runs.Run;
 export type RunStatus = OpenAI.Beta.Threads.Runs.Run['status'];
 export type RunRequiredAction = OpenAI.Beta.Threads.Runs.Run['required_action'];
 export type RunRequiredActionSubmitToolOutputs = Extract<RunRequiredAction, { type: 'submit_tool_outputs' }>;
 export type RunFunctionToolCall = OpenAI.Beta.Threads.Runs.RequiredActionFunctionToolCall;
-export type RunToolOutput = OpenAI.Beta.Threads.Runs.RunSubmitToolOutputParams.ToolOutput;
 
 export type AssistantThread = OpenAI.Beta.Threads.Thread;
 

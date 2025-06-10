@@ -6,8 +6,7 @@ const Sidebar: React.FC = () => {
     const { 
         threads, 
         activeThreadId, 
-        setActiveThread, 
-        updateThread, 
+        setActiveThread,
         deleteThread, 
         createNewThread,
         isLoading

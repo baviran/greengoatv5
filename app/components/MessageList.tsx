@@ -1,10 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { Icon } from './chatAppHelpersAndData';
 import { useChatStore } from '../lib/store/chatStore';
 
 const MessageList: React.FC = () => {
     const { activeThreadId, getMessagesForThread, isLoading, isSending } = useChatStore();
-    const messages = activeThreadId ? getMessagesForThread(activeThreadId) : [];
+
+    const messages = useMemo(() => {
+        return activeThreadId ? getMessagesForThread(activeThreadId) : [];
+    }, [activeThreadId, getMessagesForThread]);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -14,8 +18,7 @@ const MessageList: React.FC = () => {
     if (!activeThreadId) {
         return <div className="flex-grow flex items-center justify-center p-4"><p className="text-foreground/70">בחר שיחה מהרשימה כדי להציג הודעות או התחל שיחה חדשה.</p></div>;
     }
-    
-    // Show loading indicator when switching threads
+
     if (isLoading && messages.length === 0) {
         return (
             <div className="flex-grow flex items-center justify-center p-4">
@@ -26,7 +29,7 @@ const MessageList: React.FC = () => {
             </div>
         );
     }
-    
+
     if (messages.length === 0 && activeThreadId) {
         return <div className="flex-grow flex items-center justify-center p-4"><p className="text-foreground/70">אין הודעות בשיחה זו. שלח הודעה כדי להתחיל!</p></div>;
     }
@@ -73,13 +76,12 @@ const MessageList: React.FC = () => {
                     </div>
                 );
             })}
-            
-            {/* Show typing indicator when sending */}
+
             {isSending && (
                 <div className="flex justify-end">
                     <div className="max-w-[75%] sm:max-w-[70%] md:max-w-md lg:max-w-lg xl:max-w-xl bg-card text-card-foreground rounded-xl rounded-br-none shadow-sm flex items-center px-3 py-2 sm:px-3.5 sm:py-2.5">
                         <div className="flex-shrink-0 ml-2 rtl:mr-2 rtl:ml-0">
-                            <Icon name="bot" className="w-4 h-4 sm:w-4 sm:h-4 text-card-foreground" />
+                            <Icon name="bot" className="w-4 h-4 sm:w-4 sm:h-4 text-card-foreground animate-spin" />
                         </div>
                         <div className="flex items-center space-x-1 rtl:space-x-reverse">
                             <Icon name="loader2" className="w-4 h-4 text-card-foreground animate-spin" />
@@ -88,7 +90,7 @@ const MessageList: React.FC = () => {
                     </div>
                 </div>
             )}
-            
+
             <div ref={messagesEndRef} />
         </div>
     );
