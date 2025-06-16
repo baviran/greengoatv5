@@ -39,26 +39,30 @@ export class AirtableService {
         return AirtableService.instance;
     }
 
-    async getRecords(tableId: string, filterByFormula?: string): Promise<any[]> {
+    async getRecords(clause: string): Promise<any[]> {
         try {
-            let url = `https://api.airtable.com/v0/${this.baseId}/${tableId}`;
-            if (filterByFormula) {
-                url += `?filterByFormula=${encodeURIComponent(filterByFormula)}`;
-            }
-
+            logger.info(`Airtable API key present: ${!!this.apiKey}`);
+            logger.info(`Using Airtable baseId: ${this.baseId}`);
+            const url = `https://api.airtable.com/v0/${this.baseId}/${clause}`;
+            logger.info(`Getting records for request URL: ${url}`);
             const response = await axios.get(url, {
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`
                 },
                 httpsAgent: httpsAgent
             });
-
+            logger.info(`***This is how the response looks like : `);
             return response.data.records.map((record: { id: string; fields: any }) => ({
                 id: record.id,
                 ...record.fields
             }));
-        } catch (error) {
-            logger.error('Error fetching records:', error);
+        } catch (error: any) {
+            logger.error(`Error fetching records from table: ${clause}`, {
+                message: error?.message,
+                status: error?.response?.status,
+                statusText: error?.response?.statusText,
+                responseData: error?.response?.data,
+            });
             throw error;
         }
     }

@@ -155,6 +155,7 @@ async function processRun(
 }
 
 export async function POST(req: NextRequest) {
+    logger.info(`Processing chat request with payload: ${JSON.stringify(req.body)}`);
     try {
         openai = OpenAIService.getInstance();
         const body = await req.json();
@@ -177,9 +178,11 @@ export async function POST(req: NextRequest) {
 
         const assistantResponse = await processRun(threadId, initialRun.id);
 
+        logger.info(`Successfully processed chat request with response: ${JSON.stringify(assistantResponse)}`);
         return NextResponse.json({ response: assistantResponse, threadId }, { status: 200 });
 
     } catch (error: any) {
+        logger.error(`Error processing chat request`, error);
         const errorMessage = error.message || 'Internal Server Error';
         const errorDetails = error.details || (error instanceof Error ? error.stack : undefined);
         logger.error(`Error in API route: ${errorMessage}`, errorDetails ? { details: errorDetails } : error);
