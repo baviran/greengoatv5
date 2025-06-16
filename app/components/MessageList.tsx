@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useMemo } from 'react';
-import { Icon } from './chatAppHelpersAndData';
-import { useChatStore } from '../lib/store/chatStore';
+import React, {useEffect, useMemo, useRef} from 'react';
+import {Icon} from './chatAppHelpersAndData';
+import {useChatStore} from '../lib/store/chatStore';
 
 const MessageList: React.FC = () => {
-    const { activeThreadId, getMessagesForThread, isLoading, isSending } = useChatStore();
+    const { activeThreadId, messagesByThread, isLoading, isSending } = useChatStore();
 
     const messages = useMemo(() => {
-        return activeThreadId ? getMessagesForThread(activeThreadId) : [];
-    }, [activeThreadId, getMessagesForThread]);
+        return activeThreadId ? messagesByThread[activeThreadId] || [] : [];
+    }, [activeThreadId, messagesByThread]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 

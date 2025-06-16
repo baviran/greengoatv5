@@ -10,11 +10,13 @@ const MessageInput: React.FC = () => {
     const handleSendMessage = async () => {
         if (message.trim()) {
             const messageToSend = message.trim();
-            // Clear input immediately when sending
             setMessage('');
             if (textareaRef.current) textareaRef.current.style.height = 'auto';
-            
-            await sendMessage(messageToSend);
+            try {
+                await sendMessage(messageToSend);
+            } catch (error) {
+                console.error('❌ MessageInput: Error sending message:', error);
+            }
         }
     };
     

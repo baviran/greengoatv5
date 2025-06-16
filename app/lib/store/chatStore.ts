@@ -97,18 +97,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({
       threads: storedThreads,
       messagesByThread: {},
-      activeThreadId: storedThreads.length > 0 ? storedThreads[0].id : null,
       isInitialized: true
     });
-    
-    console.log(`Initialized chat store with ${storedThreads.length} threads for assistant ${state.defaultAssistantId}`);
+
+
+    if (storedThreads.length > 0) {
+      get().setActiveThread(storedThreads[0].id);
+    }
   },
 
-  // Thread management
   setActiveThread: (threadId: string | null) => {
     set({ activeThreadId: threadId, error: null });
-    
-    // Load messages for the thread if we don't have them yet
+
     if (threadId && !get().messagesByThread[threadId]) {
       get().loadMessagesForThread(threadId);
     }
@@ -206,15 +206,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   // Message management
   addMessage: (threadId: string, message: Message) => {
     const state = get();
+    const currentMessages = state.messagesByThread[threadId] || [];
+    
     const updatedMessagesByThread = {
       ...state.messagesByThread,
-      [threadId]: [...(state.messagesByThread[threadId] || []), message]
+      [threadId]: [...currentMessages, message]
     };
-    
+
     set({ messagesByThread: updatedMessagesByThread });
     
     // Update thread title if it's a new thread with generic name and this is the first user message
-    if (message.sender === 'user' && state.messagesByThread[threadId]?.length === 0) {
+    if (message.sender === 'user' && currentMessages.length === 0) {
       const thread = state.threads.find(t => t.id === threadId);
       if (thread && (thread.title.startsWith('New Chat') || thread.title === 'שיחה חדשה')) {
         get().updateThread(threadId, { 
@@ -232,17 +234,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   loadMessagesForThread: async (threadId: string) => {
     try {
       set({ isLoading: true, error: null });
-      
-      // Use API route instead of direct OpenAI service
       const response = await fetch(`/api/threads/${threadId}/messages`);
-      
       if (!response.ok) {
         throw new Error(`Failed to fetch messages: ${response.status}`);
       }
       
       const data = await response.json();
       const messages = data.messages;
-      
       const state = get();
       const updatedMessagesByThread = {
         ...state.messagesByThread,
@@ -252,27 +250,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       set({ messagesByThread: updatedMessagesByThread });
       
     } catch (error) {
-      console.error(`Error loading messages for thread ${threadId}:`, error);
       set({ error: error instanceof Error ? error.message : 'Failed to load messages' });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  // Chat interactions
   sendMessage: async (message: string, threadId?: string) => {
     const state = get();
     let targetThreadId = threadId || state.activeThreadId;
 
     try {
       set({ isSending: true, error: null });
-
-      // Create new thread if none exists
       if (!targetThreadId) {
         targetThreadId = await get().createNewThread();
       }
-
-      // Add user message to the thread
       const userMessage: Message = {
         id: Date.now().toString(),
         threadId: targetThreadId,
@@ -281,8 +273,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         timestamp: new Date().toISOString(),
       };
       get().addMessage(targetThreadId, userMessage);
-
-      // Call API
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -292,7 +282,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           assistantId: state.defaultAssistantId,
         }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to send message');
@@ -300,19 +289,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       const { response: assistantResponse, threadId: returnedThreadId } = await response.json();
 
-      // Update thread ID if a new one was created
       if (returnedThreadId && returnedThreadId !== targetThreadId) {
         set(state => ({
           ...state,
           activeThreadId: returnedThreadId,
         }));
-        
-        // Update the thread ID in our threads array
+
         const updatedThreads = state.threads.map(thread => 
           thread.id === targetThreadId ? { ...thread, id: returnedThreadId } : thread
         );
-        
-        // Update the messages with the new thread ID
+
         const updatedMessagesByThread = { ...state.messagesByThread };
         if (targetThreadId && state.messagesByThread[targetThreadId]) {
           updatedMessagesByThread[returnedThreadId] = state.messagesByThread[targetThreadId];
@@ -328,7 +314,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         targetThreadId = returnedThreadId;
       }
 
-      // Add assistant response
       if (assistantResponse && targetThreadId) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -341,14 +326,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
 
     } catch (error) {
-      console.error('Error sending message:', error);
       set({ error: error instanceof Error ? error.message : 'Failed to send message' });
     } finally {
       set({ isSending: false });
     }
   },
 
-  // Loading and error states
   setLoading: (loading: boolean) => {
     set({ isLoading: loading });
   },
@@ -361,7 +344,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ error });
   },
 
-  // Utility
   clearChat: () => {
     const state = get();
     set({
