@@ -1,9 +1,10 @@
 import React, {useEffect, useMemo, useRef} from 'react';
 import {Icon} from './chatAppHelpersAndData';
 import {useChatStore} from '../lib/store/chatStore';
+import FeedbackSection from './FeedbackSection';
 
 const MessageList: React.FC = () => {
-    const { activeThreadId, messagesByThread, isLoading, isSending } = useChatStore();
+    const { activeThreadId, messagesByThread, isLoading, isSending, submitFeedback } = useChatStore();
 
     const messages = useMemo(() => {
         return activeThreadId ? messagesByThread[activeThreadId] || [] : [];
@@ -14,6 +15,21 @@ const MessageList: React.FC = () => {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, isSending]);
+
+    const handleFeedbackSubmit = async (messageId: string, type: 'like' | 'dislike', feedback?: string) => {
+        const message = messages.find(m => m.id === messageId);
+        if (!message || !message.runId || !activeThreadId) {
+            console.error('❌ Cannot submit feedback: missing message, runId, or threadId');
+            return;
+        }
+        
+        try {
+            await submitFeedback(messageId, message.runId, activeThreadId, type, feedback);
+        } catch (error) {
+            console.error('❌ Failed to submit feedback:', error);
+            throw error;
+        }
+    };
 
     if (!activeThreadId) {
         return <div className="flex-grow flex items-center justify-center p-4"><p className="text-foreground/70">בחר שיחה מהרשימה כדי להציג הודעות או התחל שיחה חדשה.</p></div>;
@@ -60,6 +76,12 @@ const MessageList: React.FC = () => {
                         <p className={`text-xs mt-1 ${timestampColorClass} ${isUser ? 'text-right rtl:text-left' : 'text-left rtl:text-right'}`}>
                             {new Date(msg.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                         </p>
+                        {!isUser && (
+                            <FeedbackSection
+                                messageId={msg.id}
+                                onFeedbackSubmit={handleFeedbackSubmit}
+                            />
+                        )}
                     </div>
                 );
 
