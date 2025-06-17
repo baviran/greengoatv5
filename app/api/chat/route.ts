@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClauseData } from '@/app/lib/services/assistant';
 import { Logger } from '@/app/lib/utils/logger';
+import { feedbackCache } from '@/app/lib/services/feedbackCache';
 
 import {
     AssistantRun,
@@ -12,9 +13,12 @@ import {
     isTextContent
 } from '@/app/types/openai';
 import {OpenAIService} from "@/app/lib/services/openai";
+import {getFeedbackService} from "@/app/lib/services/airtable/feedback-airtable";
+import {RequiredActionFunctionToolCall} from "openai/resources/beta/threads";
 
 let openai: OpenAIService;
-
+let toolCalls:  RequiredActionFunctionToolCall[] ;
+let toolOutputs:  RunToolOutput[];
 const logger = Logger.getInstance();
 
 
@@ -80,9 +84,9 @@ async function handleRequiredActions(
     }
 
     logger.info(`Run ${run.id} requires action: submit_tool_outputs.`);
-    const toolCalls = run.required_action.submit_tool_outputs.tool_calls;
+    toolCalls = run.required_action.submit_tool_outputs.tool_calls;
 
-    const toolOutputs = await Promise.all(
+    toolOutputs = await Promise.all(
         toolCalls.map(tc => executeToolCall(tc as RunFunctionToolCall))
     );
 
@@ -119,7 +123,7 @@ async function processRun(
 ): Promise<string | null> {
     let run = await openai.retrieveRun(threadId,runId);
     let attempt = 0;
-    const maxAttempts = 20;
+    const maxAttempts = 50;
 
     while (isActiveRunStatus(run.status) && attempt < maxAttempts) {
         attempt++;
@@ -155,11 +159,16 @@ async function processRun(
 }
 
 export async function POST(req: NextRequest) {
+    console.log(`🚀 CHAT ENDPOINT CALLED - Starting chat request processing`);
     logger.info(`Processing chat request with payload: ${JSON.stringify(req.body)}`);
+    
     try {
+        console.log(`🔧 Initializing OpenAI service...`);
         openai = OpenAIService.getInstance();
         const body = await req.json();
         const { message, threadId: existingThreadId, assistantId } = body;
+
+        console.log(`📥 Parsed request - message: "${message}", threadId: ${existingThreadId}, assistantId: ${assistantId}`);
 
         if (!message) {
             return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -170,16 +179,50 @@ export async function POST(req: NextRequest) {
 
         logger.info(`Received message: "${message}", Thread ID: ${existingThreadId}, Assistant ID: ${assistantId}`);
 
+        console.log(`🔄 Starting message processing...`);
         const threadId = await getOrCreateThread(existingThreadId);
         await openai.sendMessageToThread(threadId,message);
         logger.info(`Added message to thread ${threadId}`);
         const initialRun = await openai.runAssistantOnThread(threadId,assistantId);
         logger.info(`Created initial run ${initialRun.id} for thread ${threadId}`);
 
-        const assistantResponse = await processRun(threadId, initialRun.id);
+        console.log(`⚡ Processing run ${initialRun.id}...`);
+        const assistantResponse = await processRun(threadId, initialRun.id) || '';
+        
+        console.log(`🎯 Run completed, about to cache data for runId: ${initialRun.id}`);
+        
+        // Save complete interaction data to cache
+        const interactionData = {
+            threadId,
+            runId: initialRun.id,
+            userPrompt: message,
+            assistantResponse,
+            toolCalls,
+            toolOutputs,
+            reviewer: 'user',
+            rating: null,
+            comment: null
+        };
+
+        console.log(`🔍 About to cache interaction data for runId: ${initialRun.id}`);
+        console.log(`📊 Cache size before: ${feedbackCache.size()}`);
+        console.log(`📋 Data to cache:`, JSON.stringify(interactionData, null, 2));
+
+        feedbackCache.set(initialRun.id, interactionData);
+
+        console.log(`📊 Cache size after: ${feedbackCache.size()}`);
+        console.log(`✅ Cached interaction data for runId: ${initialRun.id}`);
+        
+        // Verify the data was cached correctly
+        const verifyData = feedbackCache.get(initialRun.id);
+        if (verifyData) {
+            console.log(`✅ Cache verification successful for runId: ${initialRun.id}`);
+        } else {
+            console.error(`❌ Cache verification failed for runId: ${initialRun.id}`);
+        }
 
         logger.info(`Successfully processed chat request with response: ${JSON.stringify(assistantResponse)}`);
-        return NextResponse.json({ response: assistantResponse, threadId }, { status: 200 });
+        return NextResponse.json({ response: assistantResponse, threadId, runId: initialRun.id }, { status: 200 });
 
     } catch (error: any) {
         logger.error(`Error processing chat request`, error);

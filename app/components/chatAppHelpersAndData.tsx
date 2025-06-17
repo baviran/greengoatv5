@@ -1,4 +1,4 @@
-import { Sun, Moon, PlusSquare, User, Settings, Trash2, Edit3, Bot, Send, Loader2 } from 'lucide-react';
+import { Sun, Moon, PlusSquare, User, Settings, Trash2, Edit3, Bot, Send, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { IconProps } from '../types/chat';
 
 export const Icon: React.FC<IconProps> = ({ name, className, ...props }) => {
@@ -13,6 +13,8 @@ export const Icon: React.FC<IconProps> = ({ name, className, ...props }) => {
         bot: <Bot className={className} {...props} />,
         send: <Send className={className} {...props} />,
         loader2: <Loader2 className={className} {...props} />,
+        thumbsUp: <ThumbsUp className={className} {...props} />,
+        thumbsDown: <ThumbsDown className={className} {...props} />,
     };
     return icons[name] || null;
 };

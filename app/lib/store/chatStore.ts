@@ -62,6 +62,9 @@ interface ChatActions {
   // Chat interactions
   sendMessage: (message: string, threadId?: string) => Promise<void>;
   
+  // Feedback
+  submitFeedback: (messageId: string, runId: string, threadId: string, rating: 'like' | 'dislike', comment?: string) => Promise<void>;
+  
   // Loading and error states
   setLoading: (loading: boolean) => void;
   setSending: (sending: boolean) => void;
@@ -287,7 +290,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         throw new Error(errorData.error || 'Failed to send message');
       }
 
-      const { response: assistantResponse, threadId: returnedThreadId } = await response.json();
+      const { response: assistantResponse, threadId: returnedThreadId, runId } = await response.json();
 
       if (returnedThreadId && returnedThreadId !== targetThreadId) {
         set(state => ({
@@ -318,6 +321,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           threadId: targetThreadId,
+          runId,
           sender: 'assistant',
           text: assistantResponse,
           timestamp: new Date().toISOString(),
@@ -329,6 +333,33 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       set({ error: error instanceof Error ? error.message : 'Failed to send message' });
     } finally {
       set({ isSending: false });
+    }
+  },
+
+  submitFeedback: async (messageId: string, runId: string, threadId: string, rating: 'like' | 'dislike', comment?: string) => {
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runId,
+          rating,
+          comment
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit feedback');
+      }
+      
+      const result = await response.json();
+      console.log('✅ Feedback submitted successfully:', result);
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Error submitting feedback:', error);
+      throw error;
     }
   },
 

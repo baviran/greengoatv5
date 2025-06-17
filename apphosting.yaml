@@ -17,3 +17,8 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: AIRTABLE_BASE_FEEDBACK
+    secret: AIRTABLE_BASE_FEEDBACK
+    availability:
+      - BUILD
+      - RUNTIME

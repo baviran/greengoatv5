@@ -1,6 +1,7 @@
 export interface Message {
   id: string;
   threadId: string;
+  runId?: string;
   sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
@@ -21,6 +22,7 @@ export interface ChatAPIRequest {
 export interface ChatAPIResponse {
   response: string | null;
   threadId: string;
+  runId?: string;
   error?: string;
   details?: string;
 }
@@ -47,7 +49,7 @@ export interface ThreadData {
 }
 
 export interface IconProps {
-  name: 'sun' | 'moon' | 'plusSquare' | 'user' | 'settings' | 'trash2' | 'edit3' | 'bot' | 'send' | 'loader2';
+  name: 'sun' | 'moon' | 'plusSquare' | 'user' | 'settings' | 'trash2' | 'edit3' | 'bot' | 'send' | 'loader2' | 'thumbsUp' | 'thumbsDown';
   className?: string;
   [key: string]: any;
 }
