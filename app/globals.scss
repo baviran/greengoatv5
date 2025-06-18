@@ -1,4 +1,6 @@
-/* styles/globals.css */
+@import 'app/styles/_variables.scss';
+@import 'app/styles/_keyframe-animations.scss';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
