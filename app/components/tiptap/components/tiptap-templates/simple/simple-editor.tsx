@@ -41,7 +41,6 @@ import { HeadingDropdownMenu } from "@/app/components/tiptap/components/tiptap-u
 import { ImageUploadButton } from "@/app/components/tiptap/components/tiptap-ui/image-upload-button"
 import { ListDropdownMenu } from "@/app/components/tiptap/components/tiptap-ui/list-dropdown-menu"
 import { BlockQuoteButton } from "@/app/components/tiptap/components/tiptap-ui/blockquote-button"
-import { CodeBlockButton } from "@/app/components/tiptap/components/tiptap-ui/code-block-button"
 import {
   ColorHighlightPopover,
   ColorHighlightPopoverContent,
@@ -65,9 +64,6 @@ import { LinkIcon } from "@/app/components/tiptap/components/tiptap-icons/link-i
 import { useMobile } from "@/app/hooks/use-mobile"
 import { useWindowSize } from "@/app/hooks/use-window-size"
 import { useCursorVisibility } from "@/app/hooks/use-cursor-visibility"
-
-// --- Components ---
-import { ThemeToggle } from "@/app/components/tiptap/components/tiptap-templates/simple/theme-toggle"
 
 // --- Lib ---
 import { handleImageUpload, MAX_FILE_SIZE } from "@/app/lib/tiptap/tiptap-utils"
