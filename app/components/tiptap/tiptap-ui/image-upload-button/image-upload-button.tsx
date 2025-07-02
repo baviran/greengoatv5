@@ -109,7 +109,7 @@ export const ImageUploadButton = React.forwardRef<
         tabIndex={-1}
         aria-label="Add image"
         aria-pressed={isActive}
-        tooltip="Add image"
+        tooltip="הוסף תמונה"
         onClick={handleClick}
         {...buttonProps}
       >

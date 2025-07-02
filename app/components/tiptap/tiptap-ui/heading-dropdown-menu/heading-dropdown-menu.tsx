@@ -113,7 +113,7 @@ export function HeadingDropdownMenu({
           tabIndex={-1}
           aria-label="Format text as heading"
           aria-pressed={isAnyHeadingActive}
-          tooltip="Heading"
+          tooltip="כותרת"
           {...props}
         >
           {getActiveIcon()}

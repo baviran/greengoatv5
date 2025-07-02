@@ -126,8 +126,18 @@ export function shouldShowMarkButton(params: {
   return true
 }
 
+const markLabels: Record<Mark, string> = {
+  bold: "מודגש",
+  italic: "נטוי",
+  strike: "קו חוצה",
+  code: "קוד",
+  underline: "קו תחתון",
+  superscript: "כתב עילי",
+  subscript: "כתב תחתי",
+}
+
 export function getFormattedMarkName(type: Mark): string {
-  return type.charAt(0).toUpperCase() + type.slice(1)
+  return markLabels[type] || type.charAt(0).toUpperCase() + type.slice(1)
 }
 
 export function useMarkState(

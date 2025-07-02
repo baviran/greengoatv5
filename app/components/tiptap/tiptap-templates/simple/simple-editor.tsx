@@ -11,8 +11,7 @@ import { TaskList } from "@tiptap/extension-task-list"
 import { TextAlign } from "@tiptap/extension-text-align"
 import { Typography } from "@tiptap/extension-typography"
 import { Highlight } from "@tiptap/extension-highlight"
-import { Subscript } from "@tiptap/extension-subscript"
-import { Superscript } from "@tiptap/extension-superscript"
+
 import { Underline } from "@tiptap/extension-underline"
 
 // --- Custom Extensions ---
@@ -39,9 +38,10 @@ import "@/app/components/tiptap/tiptap-node/paragraph-node/paragraph-node.scss"
 // --- Tiptap UI ---
 import { HeadingDropdownMenu } from "@/app/components/tiptap/tiptap-ui/heading-dropdown-menu"
 import { ImageUploadButton } from "@/app/components/tiptap/tiptap-ui/image-upload-button"
+import { PDFDownloadButton } from "@/app/components/tiptap/tiptap-ui/pdf-download-button"
 import { ListDropdownMenu } from "@/app/components/tiptap/tiptap-ui/list-dropdown-menu"
 import { BlockQuoteButton } from "@/app/components/tiptap/tiptap-ui/blockquote-button"
-import { CodeBlockButton } from "@/app/components/tiptap/tiptap-ui/code-block-button"
+
 import {
   ColorHighlightPopover,
   ColorHighlightPopoverContent,
@@ -67,7 +67,7 @@ import { useWindowSize } from "@/app/hooks/tiptap/use-window-size"
 import { useCursorVisibility } from "@/app/hooks/tiptap/use-cursor-visibility"
 
 // --- Components ---
-import { ThemeToggle } from "@/app/components/tiptap/tiptap-templates/simple/theme-toggle"
+
 
 // --- Lib ---
 import { handleImageUpload, MAX_FILE_SIZE } from "@/app/lib/tiptap/tiptap-utils"
@@ -88,8 +88,6 @@ const MainToolbarContent = ({
 }) => {
   return (
     <>
-      <Spacer />
-
       <ToolbarGroup>
         <UndoRedoButton action="undo" />
         <UndoRedoButton action="redo" />
@@ -101,7 +99,6 @@ const MainToolbarContent = ({
         <HeadingDropdownMenu levels={[1, 2, 3, 4]} />
         <ListDropdownMenu types={["bulletList", "orderedList", "taskList"]} />
         <BlockQuoteButton />
-        <CodeBlockButton />
       </ToolbarGroup>
 
       <ToolbarSeparator />
@@ -110,7 +107,6 @@ const MainToolbarContent = ({
         <MarkButton type="bold" />
         <MarkButton type="italic" />
         <MarkButton type="strike" />
-        <MarkButton type="code" />
         <MarkButton type="underline" />
         {!isMobile ? (
           <ColorHighlightPopover />
@@ -118,13 +114,6 @@ const MainToolbarContent = ({
           <ColorHighlightPopoverButton onClick={onHighlighterClick} />
         )}
         {!isMobile ? <LinkPopover /> : <LinkButton onClick={onLinkClick} />}
-      </ToolbarGroup>
-
-      <ToolbarSeparator />
-
-      <ToolbarGroup>
-        <MarkButton type="superscript" />
-        <MarkButton type="subscript" />
       </ToolbarGroup>
 
       <ToolbarSeparator />
@@ -139,16 +128,11 @@ const MainToolbarContent = ({
       <ToolbarSeparator />
 
       <ToolbarGroup>
-        <ImageUploadButton text="Add" />
+        <ImageUploadButton text="הוסף" />
+        <PDFDownloadButton />
       </ToolbarGroup>
 
       <Spacer />
-
-      {isMobile && <ToolbarSeparator />}
-
-      <ToolbarGroup>
-        <ThemeToggle />
-      </ToolbarGroup>
     </>
   )
 }
@@ -201,7 +185,9 @@ export function SimpleEditor() {
       },
     },
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        codeBlock: false,
+      }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Underline,
       TaskList,
@@ -209,8 +195,6 @@ export function SimpleEditor() {
       Highlight.configure({ multicolor: true }),
       Image,
       Typography,
-      Superscript,
-      Subscript,
 
       Selection,
       ImageUploadNode.configure({

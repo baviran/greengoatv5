@@ -79,9 +79,6 @@ const Sidebar: React.FC = () => {
                 )}
             </div>
 
-            <div className="mt-auto pt-3 sm:pt-4 border-t border-border">
-                <span className="text-xs sm:text-sm">כל הזכויות שמורות</span>
-            </div>
         </div>
     );
 };

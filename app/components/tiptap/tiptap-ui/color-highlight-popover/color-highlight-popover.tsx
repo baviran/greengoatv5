@@ -56,27 +56,27 @@ export interface ColorHighlightPopoverProps extends Omit<ButtonProps, "type"> {
 
 export const DEFAULT_HIGHLIGHT_COLORS: ColorHighlightPopoverColor[] = [
   {
-    label: "Green",
+    label: "ירוק",
     value: "var(--tt-color-highlight-green)",
     border: "var(--tt-color-highlight-green-contrast)",
   },
   {
-    label: "Blue",
+    label: "כחול",
     value: "var(--tt-color-highlight-blue)",
     border: "var(--tt-color-highlight-blue-contrast)",
   },
   {
-    label: "Red",
+    label: "אדום",
     value: "var(--tt-color-highlight-red)",
     border: "var(--tt-color-highlight-red-contrast)",
   },
   {
-    label: "Purple",
+    label: "סגול",
     value: "var(--tt-color-highlight-purple)",
     border: "var(--tt-color-highlight-purple-contrast)",
   },
   {
-    label: "Yellow",
+    label: "צהוב",
     value: "var(--tt-color-highlight-yellow)",
     border: "var(--tt-color-highlight-yellow-contrast)",
   },
@@ -94,7 +94,7 @@ export const ColorHighlightPopoverButton = React.forwardRef<
     role="button"
     tabIndex={-1}
     aria-label="Highlight text"
-    tooltip="Highlight"
+    tooltip="סימון"
     ref={ref}
     {...props}
   >
@@ -119,7 +119,7 @@ export function ColorHighlightPopoverContent({
   }, [editor, onClose])
 
   const menuItems = React.useMemo(
-    () => [...colors, { label: "Remove highlight", value: "none" }],
+    () => [...colors, { label: "הסר סימון", value: "none" }],
     [colors]
   )
 
@@ -162,7 +162,7 @@ export function ColorHighlightPopoverContent({
       <div className="tiptap-button-group">
         <Button
           onClick={removeHighlight}
-          aria-label="Remove highlight"
+          aria-label="הסר סימון"
           tabIndex={selectedIndex === colors.length ? 0 : -1}
           type="button"
           role="menuitem"
@@ -245,7 +245,7 @@ export function ColorHighlightPopover({
         />
       </PopoverTrigger>
 
-      <PopoverContent aria-label="Highlight colors">
+      <PopoverContent aria-label="צבעי סימון">
         <ColorHighlightPopoverContent
           editor={editor}
           colors={colors}

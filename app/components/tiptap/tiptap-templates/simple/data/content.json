@@ -222,20 +222,7 @@
                 },
                 {
                   "type": "text",
-                  "text": " (CO"
-                },
-                {
-                  "type": "text",
-                  "marks": [
-                    {
-                      "type": "superscript"
-                    }
-                  ],
-                  "text": "2"
-                },
-                {
-                  "type": "text",
-                  "text": ") ו-"
+                  "text": " (CO2) ו-"
                 },
                 {
                   "type": "text",
@@ -244,24 +231,11 @@
                       "type": "bold"
                     }
                   ],
-                  "text": "כתב תחתי"
+                  "text": "כתב רגיל"
                 },
                 {
                   "type": "text",
-                  "text": " (H"
-                },
-                {
-                  "type": "text",
-                  "marks": [
-                    {
-                      "type": "subscript"
-                    }
-                  ],
-                  "text": "2"
-                },
-                {
-                  "type": "text",
-                  "text": "O) לדיוק מדעי."
+                  "text": " (H2O) לדיוק מדעי."
                 }
               ]
             }

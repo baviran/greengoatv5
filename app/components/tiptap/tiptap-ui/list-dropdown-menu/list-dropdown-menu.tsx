@@ -199,7 +199,7 @@ export function ListDropdownMenu({
           role="button"
           tabIndex={-1}
           aria-label="List options"
-          tooltip="List"
+          tooltip="רשימה"
           {...props}
         >
           {getActiveIcon()}

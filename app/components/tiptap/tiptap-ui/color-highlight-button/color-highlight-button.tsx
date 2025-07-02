@@ -23,52 +23,52 @@ import "@/app/components/tiptap/tiptap-ui/color-highlight-button/color-highlight
 
 export const HIGHLIGHT_COLORS = [
   {
-    label: "Default background",
+    label: "רקע ברירת מחדל",
     value: "var(--tt-bg-color)",
     border: "var(--tt-bg-color-contrast)",
   },
   {
-    label: "Gray background",
+    label: "רקע אפור",
     value: "var(--tt-color-highlight-gray)",
     border: "var(--tt-color-highlight-gray-contrast)",
   },
   {
-    label: "Brown background",
+    label: "רקע חום",
     value: "var(--tt-color-highlight-brown)",
     border: "var(--tt-color-highlight-brown-contrast)",
   },
   {
-    label: "Orange background",
+    label: "רקע כתום",
     value: "var(--tt-color-highlight-orange)",
     border: "var(--tt-color-highlight-orange-contrast)",
   },
   {
-    label: "Yellow background",
+    label: "רקע צהוב",
     value: "var(--tt-color-highlight-yellow)",
     border: "var(--tt-color-highlight-yellow-contrast)",
   },
   {
-    label: "Green background",
+    label: "רקע ירוק",
     value: "var(--tt-color-highlight-green)",
     border: "var(--tt-color-highlight-green-contrast)",
   },
   {
-    label: "Blue background",
+    label: "רקע כחול",
     value: "var(--tt-color-highlight-blue)",
     border: "var(--tt-color-highlight-blue-contrast)",
   },
   {
-    label: "Purple background",
+    label: "רקע סגול",
     value: "var(--tt-color-highlight-purple)",
     border: "var(--tt-color-highlight-purple-contrast)",
   },
   {
-    label: "Pink background",
+    label: "רקע ורוד",
     value: "var(--tt-color-highlight-pink)",
     border: "var(--tt-color-highlight-pink-contrast)",
   },
   {
-    label: "Red background",
+    label: "רקע אדום",
     value: "var(--tt-color-highlight-red)",
     border: "var(--tt-color-highlight-red-contrast)",
   },
