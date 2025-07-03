@@ -9,7 +9,6 @@ import { useTiptapEditor } from "@/app/hooks/tiptap/use-tiptap-editor"
 // --- Icons ---
 import { ListIcon } from "@/app/components/tiptap/tiptap-icons/list-icon"
 import { ListOrderedIcon } from "@/app/components/tiptap/tiptap-icons/list-ordered-icon"
-import { ListTodoIcon } from "@/app/components/tiptap/tiptap-icons/list-todo-icon"
 
 // --- Lib ---
 import { isNodeInSchema } from "@/app/lib/tiptap/tiptap-utils"
