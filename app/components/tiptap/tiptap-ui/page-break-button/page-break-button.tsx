@@ -112,8 +112,8 @@ export const PageBreakButton = React.forwardRef<
         data-disabled={isDisabled}
         role="button"
         tabIndex={-1}
-        aria-label="Insert page break"
-        tooltip="Insert page break"
+        aria-label="הכנס מעבר עמוד"
+        tooltip="הכנס מעבר עמוד"
         shortcutKeys="Mod+Enter"
         onClick={handleButtonClick}
         {...buttonProps}

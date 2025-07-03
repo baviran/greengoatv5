@@ -347,62 +347,6 @@
       ]
     },
     {
-      "type": "taskList",
-      "content": [
-        {
-          "type": "taskItem",
-          "attrs": {
-            "checked": true
-          },
-          "content": [
-            {
-              "type": "paragraph",
-              "attrs": {
-                "textAlign": "right"
-              },
-              "content": [
-                {
-                  "type": "text",
-                  "text": "בדיקת תבנית בנייה ירוקה"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "taskItem",
-          "attrs": {
-            "checked": false
-          },
-          "content": [
-            {
-              "type": "paragraph",
-              "attrs": {
-                "textAlign": "right"
-              },
-              "content": [
-                {
-                  "type": "text",
-                  "marks": [
-                    {
-                      "type": "link",
-                      "attrs": {
-                        "href": "https://example.com/integrate-green-template",
-                        "target": "_blank",
-                        "rel": "noopener noreferrer nofollow",
-                        "class": null
-                      }
-                    }
-                  ],
-                  "text": "שלב את תבנית הבנייה הירוקה"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
       "type": "paragraph",
       "attrs": {
         "textAlign": "right"

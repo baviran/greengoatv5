@@ -77,18 +77,84 @@ li {
 ul[data-type="taskList"] {
   list-style: none;
   padding: 0;
+  margin: 1rem 0;
 }
 
 ul[data-type="taskList"] li {
   display: flex;
   align-items: flex-start;
   margin-bottom: 0.5rem;
+  padding-left: 0;
+  flex-direction: row;
+}
+
+/* Custom styled checkboxes for PDF */
+ul[data-type="taskList"] li label {
+  position: relative;
+  padding-top: 2px;
+  padding-left: 0;
+  margin-left: 0.75rem;
+  margin-right: 0;
+  display: flex;
+  align-items: center;
 }
 
 ul[data-type="taskList"] input[type="checkbox"] {
-  margin-inline-start: 0.25rem;
-  margin-inline-end: 0.75rem;
-  transform: scale(1.2);
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+ul[data-type="taskList"] input[type="checkbox"] + span {
+  display: block;
+  width: 1em;
+  height: 1em;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  position: relative;
+  cursor: pointer;
+  background-color: #f9fafb;
+  flex-shrink: 0;
+}
+
+ul[data-type="taskList"] input[type="checkbox"] + span::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 0.75em;
+  height: 0.75em;
+  background-color: white;
+  opacity: 0;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22currentColor%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M21.4142%204.58579C22.1953%205.36683%2022.1953%206.63317%2021.4142%207.41421L10.4142%2018.4142C9.63317%2019.1953%208.36684%2019.1953%207.58579%2018.4142L2.58579%2013.4142C1.80474%2012.6332%201.80474%2011.3668%202.58579%2010.5858C3.36683%209.80474%204.63317%209.80474%205.41421%2010.5858L9%2014.1716L18.5858%204.58579C19.3668%203.80474%2020.6332%203.80474%2021.4142%204.58579Z%22%20fill%3D%22currentColor%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22currentColor%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20d%3D%22M21.4142%204.58579C22.1953%205.36683%2022.1953%206.63317%2021.4142%207.41421L10.4142%2018.4142C9.63317%2019.1953%208.36684%2019.1953%207.58579%2018.4142L2.58579%2013.4142C1.80474%2012.6332%201.80474%2011.3668%202.58579%2010.5858C3.36683%209.80474%204.63317%209.80474%205.41421%2010.5858L9%2014.1716L18.5858%204.58579C19.3668%203.80474%2020.6332%203.80474%2021.4142%204.58579Z%22%20fill%3D%22currentColor%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;
+}
+
+ul[data-type="taskList"] input[type="checkbox"]:checked + span {
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+ul[data-type="taskList"] input[type="checkbox"]:checked + span::before {
+  opacity: 1;
+}
+
+ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0.75rem;
+}
+
+/* Checked item text styling */
+ul[data-type="taskList"] li[data-checked="true"] p {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+ul[data-type="taskList"] li[data-checked="true"] p span {
+  text-decoration: line-through;
 }
 
 /* Horizontal rule */

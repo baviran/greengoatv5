@@ -52,7 +52,7 @@ export const PageBreak = Node.create<PageBreakOptions>({
       [
         'div',
         { class: 'page-break-text' },
-        'Page Break',
+        'מעבר עמוד',
       ],
     ]
   },

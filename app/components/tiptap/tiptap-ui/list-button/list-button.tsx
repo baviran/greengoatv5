@@ -48,19 +48,14 @@ export interface ListButtonProps extends Omit<ButtonProps, "type"> {
 
 export const listOptions: ListOption[] = [
   {
-    label: "Bullet List",
+    label: "רשימה מונגרת",
     type: "bulletList",
     icon: ListIcon,
   },
   {
-    label: "Ordered List",
+    label: "רשימה ממוספרת",
     type: "orderedList",
     icon: ListOrderedIcon,
-  },
-  {
-    label: "Task List",
-    type: "taskList",
-    icon: ListTodoIcon,
   },
 ]
 
