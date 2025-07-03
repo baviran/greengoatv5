@@ -39,7 +39,8 @@ export class PDFService {
   public async generatePDF(
     html: string, 
     options: PDFOptions = {},
-    title: string = 'PDF'
+    title: string = 'PDF',
+    customStyles?: string
   ): Promise<Buffer> {
     let page: Page | null = null
     
@@ -48,7 +49,7 @@ export class PDFService {
       
       page = await this.createPage()
       
-      const fullHtml = generatePDFHTML(html, title)
+      const fullHtml = generatePDFHTML(html, title, customStyles)
       
       await page.setContent(fullHtml, { 
         waitUntil: 'networkidle0',

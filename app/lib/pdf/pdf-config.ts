@@ -49,4 +49,6 @@ export interface PDFGenerationRequest {
   html: string
   options?: PDFOptions
   filename?: string
+  styles?: string
+  theme?: 'light' | 'dark'
 } 

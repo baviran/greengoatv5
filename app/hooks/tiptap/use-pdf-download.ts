@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react'
 import { generateHTML } from '@tiptap/html'
 import { getPDFExtensions } from '@/app/lib/tiptap/tiptap-extensions'
 import { PDF_CONFIG, PDFGenerationRequest, PDFOptions } from '@/app/lib/pdf/pdf-config'
+import { pdfStyleExtractor } from '@/app/lib/pdf/pdf-style-extractor'
 
 export interface UsePDFDownloadOptions {
   onSuccess?: () => void
@@ -40,11 +41,17 @@ export function usePDFDownload(
       const content = editor.getJSON()
       const html = generateHTML(content, getPDFExtensions())
 
+      // Extract styles from the current editor
+      const editorElement = editor.view.dom as HTMLElement
+      const extractedStyles = pdfStyleExtractor.extractEditorStyles(editorElement)
+
       // Prepare API request
       const payload: PDFGenerationRequest = {
         html,
         options: options.pdfOptions,
         filename: options.filename,
+        styles: extractedStyles.css,
+        theme: extractedStyles.theme,
       }
 
       // Call API

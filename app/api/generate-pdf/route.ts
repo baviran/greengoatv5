@@ -8,7 +8,7 @@ const logger = Logger.getInstance()
 export async function POST(req: NextRequest) {
   try {
     const body: PDFGenerationRequest = await req.json()
-    const { html, options, filename } = body
+    const { html, options, filename, styles, theme } = body
 
     if (!html) {
       return NextResponse.json(
@@ -17,9 +17,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    logger.info('Generating PDF from HTML content')
+    logger.info('Generating PDF from HTML content', { 
+      hasCustomStyles: !!styles,
+      theme 
+    })
 
-    const pdfBuffer = await pdfService.generatePDF(html, options)
+    const pdfBuffer = await pdfService.generatePDF(html, options, 'PDF', styles)
     const downloadFilename = filename || 'tiptap-export.pdf'
 
     return new NextResponse(pdfBuffer, {

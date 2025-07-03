@@ -7,6 +7,9 @@ import { generateHTML } from '@tiptap/html'
 // --- Hooks ---
 import { useTiptapEditor } from "@/app/hooks/tiptap/use-tiptap-editor"
 
+// --- PDF Style Extractor ---
+import { pdfStyleExtractor } from "@/app/lib/pdf/pdf-style-extractor"
+
 // --- Icons ---
 import { DownloadIcon } from "@/app/components/tiptap/tiptap-icons/download-icon"
 
@@ -51,8 +54,16 @@ export function usePDFDownloadState(
       // Generate HTML from the content
       const html = generateHTML(content, getPDFExtensions())
 
+      // Extract styles from the current editor
+      const editorElement = editor.view.dom as HTMLElement
+      const extractedStyles = pdfStyleExtractor.extractEditorStyles(editorElement)
+
       // Call the PDF generation API
-      const payload: PDFGenerationRequest = { html }
+      const payload: PDFGenerationRequest = { 
+        html,
+        styles: extractedStyles.css,
+        theme: extractedStyles.theme
+      }
       const response = await fetch(PDF_CONFIG.API_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,7 +123,7 @@ export const PDFDownloadButton = React.forwardRef<
   ) => {
     const editor = useTiptapEditor(providedEditor)
 
-    const { isDisabled, isDownloading, handleDownload, label } = usePDFDownloadState(
+    const { isDisabled, handleDownload, label } = usePDFDownloadState(
       editor,
       disabled
     )

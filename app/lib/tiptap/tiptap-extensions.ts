@@ -7,6 +7,7 @@ import { Highlight } from "@tiptap/extension-highlight"
 import { Image } from "@tiptap/extension-image"
 import { Typography } from "@tiptap/extension-typography"
 import { Link } from "@tiptap/extension-link"
+import { PageBreak } from "@/app/components/tiptap/tiptap-extension/page-break-extension"
 
 // Shared TipTap extensions configuration
 export const getTiptapExtensions = () => [
@@ -21,6 +22,7 @@ export const getTiptapExtensions = () => [
   Image,
   Typography,
   Link.configure({ openOnClick: false }),
+  PageBreak,
 ]
 
 // Extensions specifically for HTML/PDF generation

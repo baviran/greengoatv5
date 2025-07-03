@@ -1,0 +1,163 @@
+/* =====================
+   PAGE BREAK STYLES
+   ===================== */
+
+.tiptap.ProseMirror {
+  .page-break {
+    position: relative;
+    margin: 2rem 0;
+    padding: 1rem 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    min-height: 2rem;
+
+    &:hover {
+      .page-break-line {
+        border-color: var(--tt-brand-color-500, #3b82f6);
+      }
+      
+      .page-break-text {
+        color: var(--tt-brand-color-500, #3b82f6);
+        background-color: var(--tt-bg-color, #ffffff);
+      }
+    }
+
+    .page-break-line {
+      width: 100%;
+      height: 0;
+      border-top: 2px dashed var(--tt-gray-light-a-400, #9ca3af);
+      position: relative;
+      transition: border-color 0.2s ease;
+    }
+
+    .page-break-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: var(--tt-bg-color, #ffffff);
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--tt-gray-light-a-600, #6b7280);
+      border-radius: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    /* RTL Support */
+    &[dir="rtl"] .page-break-text {
+      direction: rtl;
+    }
+  }
+
+  /* Selected state */
+  &.ProseMirror-focused {
+    .page-break.ProseMirror-selectednode {
+      .page-break-line {
+        border-color: var(--tt-brand-color-500, #3b82f6);
+        border-width: 3px;
+      }
+      
+      .page-break-text {
+        color: var(--tt-brand-color-500, #3b82f6);
+        background-color: var(--tt-bg-color, #ffffff);
+        box-shadow: 0 0 0 2px var(--tt-brand-color-500, #3b82f6);
+      }
+    }
+  }
+}
+
+/* Dark mode support */
+.dark .tiptap.ProseMirror {
+  .page-break {
+    .page-break-line {
+      border-color: var(--tt-gray-dark-a-400, #6b7280);
+    }
+
+    .page-break-text {
+      background-color: var(--tt-bg-color, #1f2937);
+      color: var(--tt-gray-dark-a-600, #9ca3af);
+    }
+
+    &:hover {
+      .page-break-line {
+        border-color: var(--tt-brand-color-400, #60a5fa);
+      }
+      
+      .page-break-text {
+        color: var(--tt-brand-color-400, #60a5fa);
+        background-color: var(--tt-bg-color, #1f2937);
+      }
+    }
+  }
+
+  &.ProseMirror-focused {
+    .page-break.ProseMirror-selectednode {
+      .page-break-line {
+        border-color: var(--tt-brand-color-400, #60a5fa);
+      }
+      
+      .page-break-text {
+        color: var(--tt-brand-color-400, #60a5fa);
+        background-color: var(--tt-bg-color, #1f2937);
+        box-shadow: 0 0 0 2px var(--tt-brand-color-400, #60a5fa);
+      }
+    }
+  }
+}
+
+/* Print styles - actual page break for printing/PDF */
+@media print {
+  .page-break {
+    page-break-before: always;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    visibility: hidden !important;
+    
+    .page-break-line,
+    .page-break-text {
+      display: none !important;
+    }
+  }
+
+  /* Alternative CSS for better PDF support */
+  .page-break::before {
+    content: "";
+    display: block;
+    page-break-before: always;
+  }
+}
+
+/* PDF-specific styles for our dynamic PDF generation */
+.pdf-export .page-break {
+  page-break-before: always;
+  page-break-after: avoid;
+  page-break-inside: avoid;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  visibility: hidden !important;
+  
+  .page-break-line,
+  .page-break-text {
+    display: none !important;
+  }
+} 

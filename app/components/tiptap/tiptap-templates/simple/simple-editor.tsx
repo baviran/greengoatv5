@@ -7,7 +7,7 @@ import { EditorContent, EditorContext, useEditor } from "@tiptap/react"
 import { getTiptapExtensions } from "@/app/lib/tiptap/tiptap-extensions"
 
 // --- Custom Extensions ---
-import { Link } from "@/app/components/tiptap/tiptap-extension/link-extension"
+// import { Link } from "@/app/components/tiptap/tiptap-extension/link-extension"
 import { Selection } from "@/app/components/tiptap/tiptap-extension/selection-extension"
 import { TrailingNode } from "@/app/components/tiptap/tiptap-extension/trailing-node-extension"
 
@@ -26,6 +26,7 @@ import "@/app/components/tiptap/tiptap-node/code-block-node/code-block-node.scss
 import "@/app/components/tiptap/tiptap-node/list-node/list-node.scss"
 import "@/app/components/tiptap/tiptap-node/image-node/image-node.scss"
 import "@/app/components/tiptap/tiptap-node/paragraph-node/paragraph-node.scss"
+import "@/app/components/tiptap/tiptap-node/page-break-node/page-break-node.scss"
 
 // --- Tiptap UI ---
 import { HeadingDropdownMenu } from "@/app/components/tiptap/tiptap-ui/heading-dropdown-menu"
@@ -33,6 +34,7 @@ import { ImageUploadButton } from "@/app/components/tiptap/tiptap-ui/image-uploa
 import { PDFDownloadButton } from "@/app/components/tiptap/tiptap-ui/pdf-download-button"
 import { ListDropdownMenu } from "@/app/components/tiptap/tiptap-ui/list-dropdown-menu"
 import { BlockQuoteButton } from "@/app/components/tiptap/tiptap-ui/blockquote-button"
+import { PageBreakButton } from "@/app/components/tiptap/tiptap-ui/page-break-button"
 
 import {
   ColorHighlightPopover,
@@ -121,6 +123,7 @@ const MainToolbarContent = ({
 
       <ToolbarGroup>
         <ImageUploadButton text="הוסף" />
+        <PageBreakButton />
         <PDFDownloadButton />
       </ToolbarGroup>
 

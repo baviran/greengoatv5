@@ -108,13 +108,18 @@ img {
 }
 `
 
-export const generatePDFHTML = (content: string, title: string = 'PDF'): string => {
+export const generatePDFHTML = (
+  content: string, 
+  title: string = 'PDF',
+  customStyles?: string
+): string => {
+  const styles = customStyles || PDF_STYLES
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8">
     <title>${title}</title>
-    <style>${PDF_STYLES}</style>
+    <style>${styles}</style>
   </head>
   <body>${content}</body>
 </html>`
