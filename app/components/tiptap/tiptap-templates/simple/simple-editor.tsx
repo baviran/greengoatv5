@@ -51,8 +51,7 @@ import { TextAlignButton } from "@/app/components/tiptap/tiptap-ui/text-align-bu
 import { UndoRedoButton } from "@/app/components/tiptap/tiptap-ui/undo-redo-button"
 
 // --- Icons ---
-import { ArrowLeftIcon } from "@/app/components/tiptap/tiptap-icons/arrow-left-icon"
-import { HighlighterIcon } from "@/app/components/tiptap/tiptap-icons/highlighter-icon"
+import { ArrowLeftIcon, HighlighterIcon } from "@/app/components/icons"
 import { LinkIcon } from "@/app/components/tiptap/tiptap-icons/link-icon"
 
 // --- Hooks ---
