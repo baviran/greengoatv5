@@ -14,30 +14,9 @@ import { DownloadIcon } from "@/app/components/tiptap/tiptap-icons/download-icon
 import type { ButtonProps } from "@/app/components/tiptap/tiptap-ui-primitive/button"
 import { Button } from "@/app/components/tiptap/tiptap-ui-primitive/button"
 
-// Extensions for HTML generation
-import { StarterKit } from "@tiptap/starter-kit"
-import { TextAlign } from "@tiptap/extension-text-align"
-import { Underline } from "@tiptap/extension-underline"
-import { TaskList } from "@tiptap/extension-task-list"
-import { TaskItem } from "@tiptap/extension-task-item"
-import { Highlight } from "@tiptap/extension-highlight"
-import { Image } from "@tiptap/extension-image"
-import { Typography } from "@tiptap/extension-typography"
-import { Link } from "@tiptap/extension-link"
-
-const extensions = [
-  StarterKit.configure({
-    codeBlock: false,
-  }),
-  TextAlign.configure({ types: ["heading", "paragraph"] }),
-  Underline,
-  TaskList,
-  TaskItem.configure({ nested: true }),
-  Highlight.configure({ multicolor: true }),
-  Image,
-  Typography,
-  Link.configure({ openOnClick: false }),
-]
+// --- Configuration ---
+import { getPDFExtensions } from "@/app/lib/tiptap/tiptap-extensions"
+import { PDF_CONFIG, PDFGenerationRequest } from "@/app/lib/pdf/pdf-config"
 
 export interface PDFDownloadButtonProps extends Omit<ButtonProps, "type"> {
   /**
@@ -70,17 +49,19 @@ export function usePDFDownloadState(
       const content = editor.getJSON()
       
       // Generate HTML from the content
-      const html = generateHTML(content, extensions)
+      const html = generateHTML(content, getPDFExtensions())
 
       // Call the PDF generation API
-      const response = await fetch('/api/generate-pdf', {
+      const payload: PDFGenerationRequest = { html }
+      const response = await fetch(PDF_CONFIG.API_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html }),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
-        throw new Error('PDF generation failed')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || PDF_CONFIG.UI_TEXT.GENERATING_ERROR)
       }
 
       // Download the PDF
@@ -88,21 +69,22 @@ export function usePDFDownloadState(
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'document.pdf'
+      a.download = PDF_CONFIG.DEFAULT_FILENAME
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
       
     } catch (error) {
       console.error('PDF download failed:', error)
-      alert('שגיאה בהורדת ה-PDF')
+      const errorMessage = error instanceof Error ? error.message : PDF_CONFIG.UI_TEXT.ERROR_MESSAGE
+      alert(errorMessage)
     } finally {
       setIsDownloading(false)
     }
   }, [editor, isDownloading])
 
   const isDisabled = !editor || disabled || isDownloading
-  const label = isDownloading ? "מוריד PDF..." : "הורד כ-PDF"
+  const label = isDownloading ? PDF_CONFIG.UI_TEXT.DOWNLOADING_LABEL : PDF_CONFIG.UI_TEXT.DOWNLOAD_LABEL
 
   return {
     isDisabled,

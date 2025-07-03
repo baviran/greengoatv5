@@ -3,16 +3,8 @@
 import * as React from "react"
 import { EditorContent, EditorContext, useEditor } from "@tiptap/react"
 
-// --- Tiptap Core Extensions ---
-import { StarterKit } from "@tiptap/starter-kit"
-import { Image } from "@tiptap/extension-image"
-import { TaskItem } from "@tiptap/extension-task-item"
-import { TaskList } from "@tiptap/extension-task-list"
-import { TextAlign } from "@tiptap/extension-text-align"
-import { Typography } from "@tiptap/extension-typography"
-import { Highlight } from "@tiptap/extension-highlight"
-
-import { Underline } from "@tiptap/extension-underline"
+// --- Tiptap Extensions ---
+import { getTiptapExtensions } from "@/app/lib/tiptap/tiptap-extensions"
 
 // --- Custom Extensions ---
 import { Link } from "@/app/components/tiptap/tiptap-extension/link-extension"
@@ -185,17 +177,7 @@ export function SimpleEditor() {
       },
     },
     extensions: [
-      StarterKit.configure({
-        codeBlock: false,
-      }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Underline,
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Highlight.configure({ multicolor: true }),
-      Image,
-      Typography,
-
+      ...getTiptapExtensions(),
       Selection,
       ImageUploadNode.configure({
         accept: "image/*",
@@ -205,7 +187,6 @@ export function SimpleEditor() {
         onError: (error) => console.error("Upload failed:", error),
       }),
       TrailingNode,
-      Link.configure({ openOnClick: false }),
     ],
     content: content,
   })
