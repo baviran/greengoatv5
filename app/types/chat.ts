@@ -5,11 +5,19 @@ export interface Message {
   sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
+  // User context
+  userId?: string;
+  userEmail?: string;
 }
 
 export interface Thread {
   id: string;
   title: string;
+  // User context
+  userId?: string;
+  userEmail?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // API related types
@@ -43,9 +51,18 @@ export interface ChatLoadingState {
 export interface ThreadData {
   id: string;
   title: string;
+  userId?: string;
+  userEmail?: string;
   createdAt?: string;
   updatedAt?: string;
   messageCount?: number;
+}
+
+// User context type
+export interface UserContext {
+  uid: string;
+  email?: string;
+  displayName?: string;
 }
 
 export interface IconProps {

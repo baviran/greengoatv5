@@ -1,14 +1,16 @@
+import React from "react";
 import { create } from "zustand";
-import { Message, Thread } from "@/app/types/chat";
+import { Message, Thread, UserContext } from "@/app/types/chat";
+import { useAuthContext } from "@/context/auth-context";
 
 // localStorage keys
-const THREADS_STORAGE_KEY = 'chat_threads_v1';
+const THREADS_STORAGE_KEY = 'chat_threads_v2'; // Incremented version for user-specific storage
 
-// Helper functions for localStorage - only for threads
-const getStoredThreads = (assistantId: string): Thread[] => {
-  if (typeof window === 'undefined') return [];
+// Helper functions for localStorage - now user-specific
+const getStoredThreads = (assistantId: string, userId?: string): Thread[] => {
+  if (typeof window === 'undefined' || !userId) return [];
   try {
-    const stored = localStorage.getItem(`${THREADS_STORAGE_KEY}_${assistantId}`);
+    const stored = localStorage.getItem(`${THREADS_STORAGE_KEY}_${assistantId}_${userId}`);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
     console.error('Error parsing stored threads:', error);
@@ -16,12 +18,27 @@ const getStoredThreads = (assistantId: string): Thread[] => {
   }
 };
 
-const saveThreadsToStorage = (assistantId: string, threads: Thread[]) => {
-  if (typeof window === 'undefined') return;
+const saveThreadsToStorage = (assistantId: string, threads: Thread[], userId?: string) => {
+  if (typeof window === 'undefined' || !userId) return;
   try {
-    localStorage.setItem(`${THREADS_STORAGE_KEY}_${assistantId}`, JSON.stringify(threads));
+    localStorage.setItem(`${THREADS_STORAGE_KEY}_${assistantId}_${userId}`, JSON.stringify(threads));
   } catch (error) {
     console.error('Error saving threads to localStorage:', error);
+  }
+};
+
+// Helper function to clear old localStorage entries when user changes
+const clearOldStorage = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith('chat_threads_v1_')) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (error) {
+    console.error('Error clearing old storage:', error);
   }
 };
 
@@ -30,7 +47,7 @@ interface ChatState {
   messagesByThread: Record<string, Message[]>;
   // Currently active thread
   activeThreadId: string | null;
-  // Available threads
+  // Available threads (filtered by user)
   threads: Thread[];
   // Loading states
   isLoading: boolean;
@@ -41,11 +58,14 @@ interface ChatState {
   error: string | null;
   // Initialization state
   isInitialized: boolean;
+  // User context
+  userContext: UserContext | null;
 }
 
 interface ChatActions {
   // Initialization
-  initializeStore: () => void;
+  initializeStore: (userContext?: UserContext | null) => void;
+  setUserContext: (userContext: UserContext | null) => void;
   
   // Thread management
   setActiveThread: (threadId: string | null) => void;
@@ -73,11 +93,25 @@ interface ChatActions {
   // Utility
   clearChat: () => void;
   syncWithLocalStorage: () => void;
+  
+  // User-specific data management
+  clearUserData: () => void;
+  getUserThreads: () => Thread[];
 }
 
 type ChatStore = ChatState & ChatActions;
 
 const DEFAULT_ASSISTANT_ID = "asst_4OCphfGQ5emHha8ERVPYOjl6";
+
+// Helper function to get auth token
+const getAuthToken = async (): Promise<string | null> => {
+  // This is a hack to get the auth token outside of React components
+  // In a real app, you might want to pass the token as a parameter
+  if (typeof window !== 'undefined' && (window as any).__authToken) {
+    return (window as any).__authToken;
+  }
+  return null;
+};
 
 export const useChatStore = create<ChatStore>((set, get) => ({
   // Initial state
@@ -89,24 +123,54 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   defaultAssistantId: DEFAULT_ASSISTANT_ID,
   error: null,
   isInitialized: false,
+  userContext: null,
 
   // Initialization
-  initializeStore: () => {
-    if (get().isInitialized) return;
+  initializeStore: (userContext?: UserContext | null) => {
+    if (get().isInitialized && get().userContext?.uid === userContext?.uid) return;
+    
+    console.log(`🔄 Initializing chat store for user: ${userContext?.uid || 'anonymous'}`);
+    
+    // Clear old storage format
+    clearOldStorage();
     
     const state = get();
-    const storedThreads = getStoredThreads(state.defaultAssistantId);
+    const storedThreads = getStoredThreads(state.defaultAssistantId, userContext?.uid);
+    
+    // Filter threads to only show user's threads
+    const userThreads = storedThreads.filter(thread => 
+      !userContext || !thread.userId || thread.userId === userContext.uid
+    );
     
     set({
-      threads: storedThreads,
+      threads: userThreads,
       messagesByThread: {},
-      isInitialized: true
+      isInitialized: true,
+      userContext: userContext || null
     });
 
+    console.log(`✅ Loaded ${userThreads.length} threads for user: ${userContext?.uid || 'anonymous'}`);
 
-    if (storedThreads.length > 0) {
-      get().setActiveThread(storedThreads[0].id);
+    if (userThreads.length > 0) {
+      get().setActiveThread(userThreads[0].id);
     }
+  },
+
+  setUserContext: (userContext: UserContext | null) => {
+    const currentUser = get().userContext;
+    if (currentUser?.uid === userContext?.uid) return;
+    
+    console.log(`🔄 Setting user context: ${userContext?.uid || 'anonymous'}`);
+    
+    // Clear current data when user changes
+    if (currentUser?.uid !== userContext?.uid) {
+      get().clearUserData();
+    }
+    
+    set({ userContext });
+    
+    // Reinitialize with new user context
+    get().initializeStore(userContext);
   },
 
   setActiveThread: (threadId: string | null) => {
@@ -119,7 +183,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   addThread: (thread: Thread) => {
     const state = get();
-    const newThreads = [thread, ...state.threads];
+    const userContext = state.userContext;
+    
+    // Add user context to thread
+    const threadWithUser: Thread = {
+      ...thread,
+      userId: userContext?.uid,
+      userEmail: userContext?.email,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    const newThreads = [threadWithUser, ...state.threads];
     
     set({
       threads: newThreads,
@@ -129,22 +204,41 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
     });
     
-    // Save to localStorage
-    saveThreadsToStorage(state.defaultAssistantId, newThreads);
+    // Save to localStorage with user context
+    saveThreadsToStorage(state.defaultAssistantId, newThreads, userContext?.uid);
+    
+    console.log(`➕ Added thread ${thread.id} for user: ${userContext?.uid || 'anonymous'}`);
   },
 
   updateThread: (threadId: string, updates: Partial<Thread>) => {
     const state = get();
+    const userContext = state.userContext;
+    
     const updatedThreads = state.threads.map(thread =>
-      thread.id === threadId ? { ...thread, ...updates } : thread
+      thread.id === threadId ? { 
+        ...thread, 
+        ...updates, 
+        updatedAt: new Date().toISOString() 
+      } : thread
     );
     
     set({ threads: updatedThreads });
-    saveThreadsToStorage(state.defaultAssistantId, updatedThreads);
+    saveThreadsToStorage(state.defaultAssistantId, updatedThreads, userContext?.uid);
+    
+    console.log(`✏️ Updated thread ${threadId} for user: ${userContext?.uid || 'anonymous'}`);
   },
 
   deleteThread: (threadId: string) => {
     const state = get();
+    const userContext = state.userContext;
+    
+    // Only allow deletion of user's own threads
+    const threadToDelete = state.threads.find(t => t.id === threadId);
+    if (threadToDelete && threadToDelete.userId && threadToDelete.userId !== userContext?.uid) {
+      console.warn(`⚠️ User ${userContext?.uid} attempted to delete thread ${threadId} belonging to ${threadToDelete.userId}`);
+      return;
+    }
+    
     const newThreads = state.threads.filter(thread => thread.id !== threadId);
     const newMessagesByThread = { ...state.messagesByThread };
     delete newMessagesByThread[threadId];
@@ -157,25 +251,37 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
     
     // Save to localStorage
-    saveThreadsToStorage(state.defaultAssistantId, newThreads);
+    saveThreadsToStorage(state.defaultAssistantId, newThreads, userContext?.uid);
+    
+    console.log(`🗑️ Deleted thread ${threadId} for user: ${userContext?.uid || 'anonymous'}`);
   },
 
   createNewThread: async (title?: string): Promise<string> => {
     try {
       set({ isLoading: true, error: null });
       
+      const token = await getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       // Create thread on OpenAI first
       const response = await fetch('/api/threads/create', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           assistantId: get().defaultAssistantId
         }),
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('אנא התחבר כדי ליצור שיחה חדשה');
+        }
         throw new Error('Failed to create thread on OpenAI');
       }
 
@@ -209,11 +315,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   // Message management
   addMessage: (threadId: string, message: Message) => {
     const state = get();
+    const userContext = state.userContext;
     const currentMessages = state.messagesByThread[threadId] || [];
+    
+    // Add user context to message
+    const messageWithUser: Message = {
+      ...message,
+      userId: userContext?.uid,
+      userEmail: userContext?.email
+    };
     
     const updatedMessagesByThread = {
       ...state.messagesByThread,
-      [threadId]: [...currentMessages, message]
+      [threadId]: [...currentMessages, messageWithUser]
     };
 
     set({ messagesByThread: updatedMessagesByThread });
@@ -227,30 +341,65 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         });
       }
     }
+    
+    console.log(`💬 Added ${message.sender} message to thread ${threadId} for user: ${userContext?.uid || 'anonymous'}`);
   },
 
   getMessagesForThread: (threadId: string) => {
     const state = get();
-    return state.messagesByThread[threadId] || [];
+    const userContext = state.userContext;
+    const messages = state.messagesByThread[threadId] || [];
+    
+    // Filter messages to only show user's messages (extra security)
+    return messages.filter(message => 
+      !userContext || !message.userId || message.userId === userContext.uid
+    );
   },
 
   loadMessagesForThread: async (threadId: string) => {
     try {
       set({ isLoading: true, error: null });
-      const response = await fetch(`/api/threads/${threadId}/messages`);
+      
+      const token = await getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`/api/threads/${threadId}/messages`, {
+        headers,
+      });
+      
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('אנא התחבר כדי לטעון הודעות');
+        }
         throw new Error(`Failed to fetch messages: ${response.status}`);
       }
       
       const data = await response.json();
       const messages = data.messages;
       const state = get();
+      const userContext = state.userContext;
+      
+      // Add user context to loaded messages
+      const messagesWithUser = messages.map((message: Message) => ({
+        ...message,
+        userId: userContext?.uid,
+        userEmail: userContext?.email
+      }));
+      
       const updatedMessagesByThread = {
         ...state.messagesByThread,
-        [threadId]: messages
+        [threadId]: messagesWithUser
       };
       
       set({ messagesByThread: updatedMessagesByThread });
+      
+      console.log(`📥 Loaded ${messages.length} messages for thread ${threadId}, user: ${userContext?.uid || 'anonymous'}`);
       
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to load messages' });
@@ -261,32 +410,51 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   sendMessage: async (message: string, threadId?: string) => {
     const state = get();
+    const userContext = state.userContext;
     let targetThreadId = threadId || state.activeThreadId;
 
     try {
       set({ isSending: true, error: null });
+      
       if (!targetThreadId) {
         targetThreadId = await get().createNewThread();
       }
+      
       const userMessage: Message = {
         id: Date.now().toString(),
         threadId: targetThreadId,
         sender: 'user',
         text: message,
         timestamp: new Date().toISOString(),
+        userId: userContext?.uid,
+        userEmail: userContext?.email
       };
       get().addMessage(targetThreadId, userMessage);
+      
+      const token = await getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           message,
           threadId: targetThreadId,
           assistantId: state.defaultAssistantId,
         }),
       });
+      
       if (!response.ok) {
         const errorData = await response.json();
+        if (response.status === 401) {
+          throw new Error('אנא התחבר כדי לשלוח הודעות');
+        }
         throw new Error(errorData.error || 'Failed to send message');
       }
 
@@ -325,9 +493,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           sender: 'assistant',
           text: assistantResponse,
           timestamp: new Date().toISOString(),
+          userId: userContext?.uid,
+          userEmail: userContext?.email
         };
         get().addMessage(targetThreadId, assistantMessage);
       }
+
+      console.log(`📤 Message sent successfully for user: ${userContext?.uid || 'anonymous'}`);
 
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to send message' });
@@ -338,9 +510,18 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   submitFeedback: async (messageId: string, runId: string, threadId: string, rating: 'like' | 'dislike', comment?: string) => {
     try {
+      const token = await getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           runId,
           rating,
@@ -350,11 +531,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       
       if (!response.ok) {
         const errorData = await response.json();
+        if (response.status === 401) {
+          throw new Error('אנא התחבר כדי לשלוח משוב');
+        }
         throw new Error(errorData.error || 'Failed to submit feedback');
       }
       
       const result = await response.json();
-      console.log('✅ Feedback submitted successfully:', result);
+      const userContext = get().userContext;
+      console.log(`✅ Feedback submitted successfully for user: ${userContext?.uid || 'anonymous'}`, result);
       return result;
       
     } catch (error) {
@@ -377,6 +562,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   clearChat: () => {
     const state = get();
+    const userContext = state.userContext;
+    
     set({
       messagesByThread: {},
       activeThreadId: null,
@@ -384,12 +571,67 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       error: null
     });
     
-    // Clear localStorage
-    saveThreadsToStorage(state.defaultAssistantId, []);
+    // Clear localStorage for current user
+    saveThreadsToStorage(state.defaultAssistantId, [], userContext?.uid);
+    
+    console.log(`🧹 Cleared chat data for user: ${userContext?.uid || 'anonymous'}`);
   },
 
   syncWithLocalStorage: () => {
     const state = get();
-    saveThreadsToStorage(state.defaultAssistantId, state.threads);
+    const userContext = state.userContext;
+    saveThreadsToStorage(state.defaultAssistantId, state.threads, userContext?.uid);
+  },
+
+  clearUserData: () => {
+    set({
+      messagesByThread: {},
+      activeThreadId: null,
+      threads: [],
+      error: null,
+      isInitialized: false
+    });
+  },
+
+  getUserThreads: () => {
+    const state = get();
+    const userContext = state.userContext;
+    
+    return state.threads.filter(thread => 
+      !userContext || !thread.userId || thread.userId === userContext.uid
+    );
   }
 }));
+
+// Hook to use the chat store with authentication
+export const useAuthenticatedChatStore = () => {
+  const { user, getIdToken } = useAuthContext();
+  const store = useChatStore();
+
+  // Update the global auth token whenever it changes
+  React.useEffect(() => {
+    const updateToken = async () => {
+      const token = await getIdToken();
+      if (typeof window !== 'undefined') {
+        (window as any).__authToken = token;
+      }
+    };
+    updateToken();
+  }, [getIdToken]);
+
+  // Update user context when user changes
+  React.useEffect(() => {
+    if (user) {
+      const userContext: UserContext = {
+        uid: user.uid,
+        email: user.email || undefined,
+        displayName: user.displayName || undefined
+      };
+      store.setUserContext(userContext);
+    } else {
+      store.setUserContext(null);
+    }
+  }, [user, store]);
+
+  return store;
+};

@@ -1,4 +1,5 @@
 import './globals.scss';
+import { AuthProvider } from '@/context/auth-context';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -6,8 +7,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             className="dark"
       >
       <body className="bg-background text-foreground ">
-
-      {children}</body>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
       </html>
   );
 }

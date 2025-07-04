@@ -1,10 +1,10 @@
 import React, {useEffect, useMemo, useRef} from 'react';
 import { Icon } from '@/app/components/icons';
-import {useChatStore} from '../lib/store/chatStore';
+import {useAuthenticatedChatStore} from '../lib/store/chatStore';
 import FeedbackSection from './FeedbackSection';
 
 const MessageList: React.FC = () => {
-    const { activeThreadId, messagesByThread, isLoading, isSending, submitFeedback } = useChatStore();
+    const { activeThreadId, messagesByThread, isLoading, isSending, submitFeedback } = useAuthenticatedChatStore();
 
     const messages = useMemo(() => {
         return activeThreadId ? messagesByThread[activeThreadId] || [] : [];

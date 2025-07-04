@@ -1,20 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpenAIService } from '@/app/lib/services/openai'; // Ensure this path is correct
+import { getOpenAIService } from '@/app/lib/services/openai';
+import { withAuth } from '@/lib/auth-middleware';
+import { DecodedIdToken } from 'firebase-admin/auth';
 
-export async function GET(
+const authenticatedGET = withAuth(async (
     request: NextRequest,
+    user: DecodedIdToken,
     context: any
-) {
+) => {
   try {
-    const { threadId } = context.params; // Access threadId from context.params
-    if (!threadId || typeof threadId !== 'string') { // Added a type check for robustness
+    console.log(`📥 Messages request for user: ${user.uid} (${user.email})`);
+    
+    const { threadId } = context.params;
+    if (!threadId || typeof threadId !== 'string') {
       return NextResponse.json(
           { error: 'Thread ID is required and must be a string' },
           { status: 400 }
       );
     }
 
+    console.log(`🔍 Fetching messages from thread: ${threadId} for user: ${user.uid}`);
+    
     const messages = await getOpenAIService().fetchMessagesByThreadId(threadId);
+    
+    console.log(`✅ Successfully fetched ${messages.length} messages for user: ${user.uid}`);
+    
     return NextResponse.json({ messages });
 
   } catch (error) {
@@ -28,4 +38,6 @@ export async function GET(
         { status: 500 }
     );
   }
-}
+});
+
+export { authenticatedGET as GET };

@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { feedbackCache } from '../../lib/services/feedbackCache';
 import { getFeedbackService } from '../../lib/services/airtable/feedback-airtable';
+import { withAuth } from '@/lib/auth-middleware';
+import { DecodedIdToken } from 'firebase-admin/auth';
 
-export async function POST(request: NextRequest) {
+const authenticatedPOST = withAuth(async (request: NextRequest, user: DecodedIdToken) => {
     try {
         const body = await request.json();
         const { runId, rating, comment } = body;
 
-        console.log(`🔍 Feedback request received for runId: ${runId}, rating: ${rating}`);
+        console.log(`🔍 Feedback request received for runId: ${runId}, rating: ${rating}, user: ${user.uid}`);
         console.log(`📊 Current cache size: ${feedbackCache.size()}`);
         console.log(`🔎 All cached runIds:`, feedbackCache.getAll().map(data => data.runId));
 
@@ -38,7 +40,16 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.log(`✅ Found cached data for runId: ${runId}`);
+        // Check if the user is authorized to provide feedback for this interaction
+        if (cachedData.userId && cachedData.userId !== user.uid) {
+            console.error(`❌ User ${user.uid} attempted to provide feedback for interaction belonging to user ${cachedData.userId}`);
+            return NextResponse.json(
+                { error: 'You are not authorized to provide feedback for this interaction' },
+                { status: 403 }
+            );
+        }
+
+        console.log(`✅ Found cached data for runId: ${runId} from user: ${user.uid}`);
         console.log(`📋 Cached data:`, JSON.stringify(cachedData, null, 2));
 
         // Convert like/dislike to emoji format expected by Airtable
@@ -47,7 +58,8 @@ export async function POST(request: NextRequest) {
         // Update the cached data with feedback
         const updatedData = feedbackCache.update(runId, {
             rating: airtableRating,
-            comment: comment || null
+            comment: comment || null,
+            reviewer: user.email || user.uid
         });
 
         if (!updatedData) {
@@ -60,7 +72,7 @@ export async function POST(request: NextRequest) {
         // Send the complete data to Airtable
         try {
             const airtableResult = await getFeedbackService().logAssistantInteraction(updatedData);
-            console.log(`📝 Feedback sent to Airtable for runId: ${runId}, rating: ${airtableRating}`);
+            console.log(`📝 Feedback sent to Airtable for runId: ${runId}, rating: ${airtableRating}, user: ${user.uid}`);
             
             return NextResponse.json({ 
                 success: true, 
@@ -86,9 +98,9 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});
 
-export async function GET(request: NextRequest) {
+const authenticatedGET = withAuth(async (request: NextRequest, user: DecodedIdToken) => {
     try {
         const { searchParams } = new URL(request.url);
         const runId = searchParams.get('runId');
@@ -101,13 +113,27 @@ export async function GET(request: NextRequest) {
                     { status: 404 }
                 );
             }
+            
+            // Check if the user is authorized to view this interaction
+            if (data.userId && data.userId !== user.uid) {
+                return NextResponse.json(
+                    { error: 'You are not authorized to view this interaction' },
+                    { status: 403 }
+                );
+            }
+            
             return NextResponse.json(data);
         }
 
+        // Return only the user's interactions
         const allData = feedbackCache.getAll();
+        const userInteractions = allData.filter(interaction => 
+            !interaction.userId || interaction.userId === user.uid
+        );
+        
         return NextResponse.json({ 
-            interactions: allData,
-            count: allData.length 
+            interactions: userInteractions,
+            count: userInteractions.length 
         });
 
     } catch (error) {
@@ -117,4 +143,6 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});
+
+export { authenticatedPOST as POST, authenticatedGET as GET };

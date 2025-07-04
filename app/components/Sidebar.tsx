@@ -1,7 +1,9 @@
 import React from 'react';
 import { Icon } from '@/app/components/icons';
 import { assistantData } from './chatAppHelpersAndData';
-import { useChatStore } from '../lib/store/chatStore';
+import { useAuthenticatedChatStore } from '../lib/store/chatStore';
+import { useAuthContext } from '@/context/auth-context';
+import { AuthGuard } from './auth/AuthGuard';
 
 const Sidebar: React.FC = () => {
     const { 
@@ -11,7 +13,9 @@ const Sidebar: React.FC = () => {
         deleteThread, 
         createNewThread,
         isLoading
-    } = useChatStore();
+    } = useAuthenticatedChatStore();
+    
+    const { user } = useAuthContext();
 
     const handleThreadSelect = (threadId: string) => setActiveThread(threadId);
     
@@ -27,7 +31,6 @@ const Sidebar: React.FC = () => {
         }
     };
 
-
     return (
         <div className="fixed top-16 bottom-0 right-0 w-64 sm:w-72 bg-card border-l border-border flex flex-col p-3 sm:p-4 space-y-3 sm:space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
             <div className="p-3 rounded-lg bg-muted">
@@ -41,45 +44,67 @@ const Sidebar: React.FC = () => {
                 <p className="text-foreground/70 text-xs">{assistantData.description}</p>
             </div>
 
-            <button
-                onClick={handleNewChat}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors duration-150 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-            >
-                {isLoading ? (
-                    <Icon name="loader2" className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                ) : (
-                    <Icon name="plusSquare" className="w-4 h-4 sm:w-5 sm:h-5" />
-                )}
-                <span>{isLoading ? 'יוצר שיחה...' : 'צ\'אט חדש'}</span>
-            </button>
-
-            <div className="flex-grow space-y-1.5 overflow-y-auto pr-1 rtl:pl-1 rtl:pr-0">
-                <h3 className="text-card-foreground font-medium text-xs sm:text-sm mb-2 px-1">היסטוריית שיחות</h3>
-                {threads.length > 0 ? threads.map(thread => (
-                    <div
-                        key={thread.id}
-                        onClick={() => handleThreadSelect(thread.id)}
-                        className={`p-2 sm:p-2.5 rounded-md cursor-pointer group ${
-                            activeThreadId === thread.id
-                                ? 'bg-accent text-white'
-                                : 'bg-muted text-foreground/80 hover:bg-muted/80 hover:text-card-foreground'
-                        }`}
-                    >
-                        <div className="flex justify-between items-center">
-                            <p className={`text-xs sm:text-sm truncate ${activeThreadId === thread.id ? 'text-white' : 'group-hover:text-card-foreground'}`}>{thread.title}</p>
-                            <div className="flex space-x-1 rtl:space-x-reverse opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={(e) => handleDeleteThread(e, thread.id)} className="p-1 rounded text-red-500 hover:bg-red-500/10" aria-label="Delete thread">
-                                    <Icon name="trash2" className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                                </button>
-                            </div>
-                        </div>
+            <AuthGuard 
+                fallback={
+                    <div className="flex items-center justify-center py-4">
+                        <p className="text-foreground/70 text-xs text-center">
+                            התחבר כדי לראות את השיחות שלך
+                        </p>
                     </div>
-                )) : (
-                    <p className="text-foreground/70 text-xs sm:text-sm text-center py-4">לא נמצאו שיחות.</p>
-                )}
-            </div>
+                }
+            >
+                <button
+                    onClick={handleNewChat}
+                    disabled={isLoading || !user}
+                    className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors duration-150 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                >
+                    {isLoading ? (
+                        <Icon name="loader2" className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                    ) : (
+                        <Icon name="plusSquare" className="w-4 h-4 sm:w-5 sm:h-5" />
+                    )}
+                    <span>{isLoading ? 'יוצר שיחה...' : 'צ\'אט חדש'}</span>
+                </button>
 
+                <div className="flex-grow space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                    {threads.length === 0 ? (
+                        <p className="text-foreground/50 text-xs text-center py-4">
+                            אין שיחות עדיין.<br />התחל שיחה חדשה!
+                        </p>
+                    ) : (
+                        threads.map((thread) => (
+                            <div
+                                key={thread.id}
+                                onClick={() => handleThreadSelect(thread.id)}
+                                className={`group cursor-pointer p-2 sm:p-3 rounded-lg border transition-all duration-150 ${
+                                    activeThreadId === thread.id
+                                        ? 'bg-accent text-white border-accent shadow-md'
+                                        : 'bg-background border-border hover:bg-muted hover:border-muted-foreground/20'
+                                }`}
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-grow min-w-0 mr-2 rtl:ml-2 rtl:mr-0">
+                                        <h3 className="text-sm font-medium truncate leading-tight">
+                                            {thread.title}
+                                        </h3>
+                                    </div>
+                                    <button
+                                        onClick={(e) => handleDeleteThread(e, thread.id)}
+                                        className={`flex-shrink-0 p-1 rounded transition-colors duration-150 ${
+                                            activeThreadId === thread.id
+                                                ? 'text-white/80 hover:text-white hover:bg-white/10'
+                                                : 'text-foreground/40 hover:text-foreground/70 hover:bg-destructive/10'
+                                        }`}
+                                        aria-label="Delete thread"
+                                    >
+                                        <Icon name="trash2" className="w-3 h-3 sm:w-4 sm:h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </AuthGuard>
         </div>
     );
 };

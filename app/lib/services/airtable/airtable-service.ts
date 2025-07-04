@@ -22,14 +22,36 @@ export class AirtableService {
         this.baseId = baseId;
         this.apiKey = process.env.AIRTABLE_API_KEY || '';
         
+        // Enhanced logging for debugging
+        logger.info(`🔧 AIRTABLE SERVICE INITIALIZATION`);
+        logger.info(`📋 Base ID: ${baseId ? baseId : 'MISSING'}`);
+        logger.info(`🔑 API Key Present: ${!!this.apiKey}`);
+        logger.info(`🔑 API Key Length: ${this.apiKey.length}`);
+        logger.info(`🔑 API Key Starts With: ${this.apiKey.substring(0, 10)}...`);
+        
         if (!this.apiKey) {
-            logger.error('AIRTABLE_API_KEY environment variable is not set');
+            logger.error('❌ AIRTABLE_API_KEY environment variable is not set');
             throw new Error('AIRTABLE_API_KEY environment variable is not set');
         }
         
-        Airtable.configure({ apiKey: this.apiKey });
-        this.base = Airtable.base(baseId);
-        logger.info(`AirtableService initialized for base: ${baseId}`);
+        if (!baseId) {
+            logger.error('❌ Airtable Base ID is not provided');
+            throw new Error('Airtable Base ID is not provided');
+        }
+        
+        // Validate API key format (Airtable keys start with 'key' or 'pat')
+        if (!this.apiKey.startsWith('key') && !this.apiKey.startsWith('pat')) {
+            logger.warn('⚠️ Airtable API key format might be invalid - should start with "key" or "pat"');
+        }
+        
+        try {
+            Airtable.configure({ apiKey: this.apiKey });
+            this.base = Airtable.base(baseId);
+            logger.info(`✅ AirtableService initialized successfully for base: ${baseId}`);
+        } catch (error) {
+            logger.error(`❌ Failed to initialize AirtableService:`, error);
+            throw error;
+        }
     }
 
     static getInstance(baseId: string): AirtableService {
@@ -41,42 +63,76 @@ export class AirtableService {
 
     async getRecords(clause: string): Promise<any[]> {
         try {
-            logger.info(`Airtable API key present: ${!!this.apiKey}`);
-            logger.info(`Using Airtable baseId: ${this.baseId}`);
+            logger.info(`🔍 AIRTABLE GET RECORDS REQUEST`);
+            logger.info(`📋 Base ID: ${this.baseId}`);
+            logger.info(`📄 Table/Clause: ${clause}`);
+            logger.info(`🔑 API Key Present: ${!!this.apiKey}`);
+            logger.info(`🔑 API Key First 10 chars: ${this.apiKey.substring(0, 10)}...`);
+            
             const url = `https://api.airtable.com/v0/${this.baseId}/${clause}`;
-            logger.info(`Getting records for request URL: ${url}`);
+            logger.info(`🌐 Request URL: ${url}`);
+            
             const response = await axios.get(url, {
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'User-Agent': 'GreenGoat-v5/1.0'
                 },
-                httpsAgent: httpsAgent
+                httpsAgent: httpsAgent,
+                timeout: 10000 // 10 second timeout
             });
-            logger.info(`***This is how the response looks like : `);
+            
+            logger.info(`✅ Airtable API Response Status: ${response.status}`);
+            logger.info(`📊 Records Count: ${response.data.records?.length || 0}`);
+            logger.info(`📋 Response Headers: ${JSON.stringify(response.headers)}`);
+            
             return response.data.records.map((record: { id: string; fields: any }) => ({
                 id: record.id,
                 ...record.fields
             }));
         } catch (error: any) {
-            logger.error(`Error fetching records from table: ${clause}`, {
+            logger.error(`❌ AIRTABLE API ERROR - Table: ${clause}`, {
                 message: error?.message,
                 status: error?.response?.status,
                 statusText: error?.response?.statusText,
                 responseData: error?.response?.data,
+                requestConfig: {
+                    url: error?.config?.url,
+                    method: error?.config?.method,
+                    headers: error?.config?.headers ? 'Present' : 'Missing'
+                },
+                isNetworkError: error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT',
+                isAuthError: error?.response?.status === 401 || error?.response?.status === 403,
+                isNotFoundError: error?.response?.status === 404,
+                isRateLimitError: error?.response?.status === 429,
+                errorCode: error?.code
             });
+            
+            // Enhanced error handling
+            if (error?.response?.status === 401) {
+                logger.error('🔐 Authentication Failed - Check API Key');
+            } else if (error?.response?.status === 403) {
+                logger.error('🚫 Access Forbidden - Check API Key Permissions');
+            } else if (error?.response?.status === 404) {
+                logger.error('🔍 Resource Not Found - Check Base ID and Table Name');
+            } else if (error?.response?.status === 429) {
+                logger.error('⏰ Rate Limited - Too Many Requests');
+            }
+            
             throw error;
         }
     }
 
     async getRecord(tableName: string, recordId: string) {
         try {
-            logger.info(`Fetching record ${recordId} from ${tableName}`);
+            logger.info(`🔍 Fetching single record ${recordId} from ${tableName}`);
             const record = await this.base(tableName).find(recordId);
+            logger.info(`✅ Successfully fetched record ${recordId}`);
             return {
                 id: record.id,
                 ...record.fields
             };
         } catch (error) {
-            logger.error(`Error fetching record ${recordId} from ${tableName}:`, error);
+            logger.error(`❌ Error fetching record ${recordId} from ${tableName}:`, error);
             throw error;
         }
     }
@@ -84,9 +140,10 @@ export class AirtableService {
     async createRecord(tableId: string, fields: Record<string, any>): Promise<any> {
         const url = `https://api.airtable.com/v0/${this.baseId}/${tableId}`;
         try {
-            logger.info(`Creating record in base: ${this.baseId}, table: ${tableId}`);
-            logger.info(`Request URL: ${url}`);
-            logger.info(`Payload: ${JSON.stringify({ fields }, null, 2)}`);
+            logger.info(`📝 AIRTABLE CREATE RECORD REQUEST`);
+            logger.info(`📋 Base: ${this.baseId}, Table: ${tableId}`);
+            logger.info(`🌐 Request URL: ${url}`);
+            logger.info(`📊 Payload: ${JSON.stringify({ fields }, null, 2)}`);
 
             const response = await axios.post(
                 url,
@@ -94,23 +151,29 @@ export class AirtableService {
                 {
                     headers: {
                         'Authorization': `Bearer ${this.apiKey}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'GreenGoat-v5/1.0'
                     },
-                    httpsAgent: httpsAgent
+                    httpsAgent: httpsAgent,
+                    timeout: 10000
                 }
             );
 
+            logger.info(`✅ Record created successfully - ID: ${response.data.id}`);
             return {
                 id: response.data.id,
                 ...response.data.fields
             };
         } catch (error: any) {
-            logger.error('Error creating record in Airtable:', {
+            logger.error('❌ AIRTABLE CREATE RECORD ERROR:', {
                 message: error.message,
                 status: error.response?.status,
                 statusText: error.response?.statusText,
                 responseData: error.response?.data,
-                requestPayload: { fields }
+                requestPayload: { fields },
+                url: url,
+                baseId: this.baseId,
+                tableId: tableId
             });
             throw error;
         }
@@ -367,6 +430,9 @@ export class AirtableService {
     async logAssistantInteraction(fields: {
         threadId: string;
         runId: string;
+        userId?: string;
+        userEmail?: string;
+        userDisplayName?: string;
         userPrompt: string;
         assistantResponse: string;
         toolCalls?: any;
@@ -374,6 +440,8 @@ export class AirtableService {
         reviewer?: string | null;
         rating?: '👍' | '👎' | null;
         comment?: string | null;
+        timestamp?: string;
+        sessionId?: string;
     }): Promise<any> {
         try {
             const tableId = 'Feedbacks';
@@ -384,31 +452,36 @@ export class AirtableService {
             const recordData = {
                 'Thread ID': fields.threadId,
                 'Run ID': fields.runId,
+                'User ID': fields.userId || '',
+                'User Email': fields.userEmail || '',
+                'User Display Name': fields.userDisplayName || '',
                 'User Prompt': fields.userPrompt,
                 'Assistant Response': fields.assistantResponse,
                 'Tool Calls': fields.toolCalls ? JSON.stringify(fields.toolCalls) : '',
                 'Tool Outputs': fields.toolOutputs ? JSON.stringify(fields.toolOutputs) : '',
                 'Rating': fields.rating ?? '',
                 'QA Comment': fields.comment ?? '',
-                'Reviewed By': fields.reviewer ?? ''
+                'Reviewed By': fields.reviewer ?? '',
+                'Timestamp': fields.timestamp || new Date().toISOString(),
+                'Session ID': fields.sessionId || ''
             };
 
             let record;
             if (existingRecord) {
                 // Update existing record
-                logger.info(`Updating existing record for runId: ${fields.runId}, recordId: ${existingRecord.id}`);
+                logger.info(`Updating existing record for runId: ${fields.runId}, recordId: ${existingRecord.id}, user: ${fields.userId || 'anonymous'}`);
                 record = await this.updateRecord(tableId, existingRecord.id, recordData);
-                logger.info(`Updated interaction record: ${record.id}`);
+                logger.info(`Updated interaction record: ${record.id} for user: ${fields.userId || 'anonymous'}`);
             } else {
                 // Create new record
-                logger.info(`Creating new record for runId: ${fields.runId}`);
+                logger.info(`Creating new record for runId: ${fields.runId}, user: ${fields.userId || 'anonymous'}`);
                 record = await this.createRecord(tableId, recordData);
-                logger.info(`Created new interaction record: ${record.id}`);
+                logger.info(`Created new interaction record: ${record.id} for user: ${fields.userId || 'anonymous'}`);
             }
 
             return record;
         } catch (error) {
-            logger.error('Failed to log assistant interaction:', error);
+            logger.error(`Failed to log assistant interaction for user: ${fields.userId || 'anonymous'}`, error);
             throw error;
         }
     }

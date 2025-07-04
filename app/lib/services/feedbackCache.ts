@@ -1,10 +1,17 @@
+import { Logger } from '@/app/lib/utils/logger';
+
+const logger = Logger.getInstance();
+
 interface AssistantInteractionData {
     threadId: string;
     runId: string;
+    userId?: string;
+    userEmail?: string;
     userPrompt: string;
     assistantResponse: string;
     toolCalls?: any;
     toolOutputs?: any;
+    timestamp?: string;
     reviewer?: string | null;
     rating?: '👍' | '👎' | null;
     comment?: string | null;
@@ -14,11 +21,34 @@ class FeedbackCache {
     private cache = new Map<string, AssistantInteractionData>();
 
     set(runId: string, data: AssistantInteractionData) {
+        logger.info(`💾 CACHING INTERACTION DATA`);
+        logger.info(`🏃 Run ID: ${runId}`);
+        logger.info(`🔗 Thread ID: ${data.threadId}`);
+        logger.info(`👤 User ID: ${data.userId || 'N/A'}`);
+        logger.info(`📊 Cache size before: ${this.cache.size}`);
+        
         this.cache.set(runId, data);
+        
+        logger.info(`📊 Cache size after: ${this.cache.size}`);
+        logger.info(`✅ Interaction data cached successfully`);
     }
 
     get(runId: string): AssistantInteractionData | undefined {
-        return this.cache.get(runId);
+        logger.info(`📥 RETRIEVING CACHED DATA`);
+        logger.info(`🏃 Run ID: ${runId}`);
+        logger.info(`📊 Current cache size: ${this.cache.size}`);
+        
+        const data = this.cache.get(runId);
+        
+        if (data) {
+            logger.info(`✅ Found cached data for runId: ${runId}`);
+            logger.info(`👤 User ID: ${data.userId || 'N/A'}`);
+            logger.info(`🔗 Thread ID: ${data.threadId}`);
+        } else {
+            logger.warn(`⚠️ No cached data found for runId: ${runId}`);
+        }
+        
+        return data;
     }
 
     update(runId: string, updates: Partial<AssistantInteractionData>): AssistantInteractionData | null {

@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server';
-import { firestoreAdmin, authAdmin } from '@/lib/firebase-admin';
+import { NextRequest, NextResponse } from 'next/server';
+import { firestoreAdmin } from '@/lib/firebase-admin';
+import { withAuth } from '@/lib/auth-middleware';
+import { DecodedIdToken } from 'firebase-admin/auth';
 import admin from 'firebase-admin';
 
 // Define types since dashboard page doesn't exist yet
@@ -27,26 +29,18 @@ function generatePrompt(formData: FormData, platform: Platform, upgrade: boolean
   return { prompt };
 }
 
-export async function POST(request: Request) {
+const authenticatedPOST = withAuth(async (request: NextRequest, user: DecodedIdToken) => {
   try {
-    // 1. Verify User Authentication
-    const authorizationHeader = request.headers.get('Authorization');
-    if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
-      return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-    }
-
-    const idToken = authorizationHeader.split('Bearer ')[1];
-    const decodedToken = await authAdmin.verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-
+    console.log(`🚀 Prompt generation request from user: ${user.uid} (${user.email})`);
+    
     const { formData, platform, upgrade } = await request.json() as { formData: FormData, platform: Platform, upgrade: boolean };
 
-    // 2. Fetch User Document from Firestore
-    const userDocRef = firestoreAdmin.collection('users').doc(uid);
+    // 1. Fetch User Document from Firestore
+    const userDocRef = firestoreAdmin.collection('users').doc(user.uid);
     const userDocSnap = await userDocRef.get();
 
     if (!userDocSnap.exists) {
-      return new NextResponse(JSON.stringify({ error: 'User not found' }), { status: 404 });
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const userData = userDocSnap.data()!;
@@ -54,31 +48,35 @@ export async function POST(request: Request) {
     const subscriptionStatus = userData.subscription?.status || 'inactive';
     const subscriptionType = userData.subscription?.type || 'free';
 
-    // 3. Check Permissions
+    // 2. Check Permissions
     const hasPermission = (subscriptionType === 'premium' && subscriptionStatus === 'active') || promptCount > 0;
 
     if (!hasPermission) {
-      return new NextResponse(JSON.stringify({ error: 'No prompts remaining. Please upgrade.' }), { status: 403 });
+      return NextResponse.json({ error: 'No prompts remaining. Please upgrade.' }, { status: 403 });
     }
 
-    // 4. Decrement Prompt Count for Free Users
+    // 3. Decrement Prompt Count for Free Users
     if (subscriptionType === 'free') {
       await userDocRef.update({
         promptCount: admin.firestore.FieldValue.increment(-1),
       });
     }
 
-    // 5. Generate the Prompt
+    // 4. Generate the Prompt
     const { prompt } = generatePrompt(formData, platform, upgrade);
 
-    // 6. Return the Result
+    console.log(`✅ Prompt generated successfully for user: ${user.uid}`);
+
+    // 5. Return the Result
     return NextResponse.json({ prompt });
 
   } catch (error) {
     console.error('Error in generate-prompt API route:', error);
     if (error instanceof Error && 'code' in error && error.code === 'auth/id-token-expired') {
-        return new NextResponse(JSON.stringify({ error: 'Authentication token expired, please sign in again.' }), { status: 401 });
+        return NextResponse.json({ error: 'Authentication token expired, please sign in again.' }, { status: 401 });
     }
-    return new NextResponse(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});
+
+export { authenticatedPOST as POST };
