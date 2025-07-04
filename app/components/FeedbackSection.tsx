@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Icon } from './chatAppHelpersAndData';
+import { Icon } from '@/app/components/icons';
 
 interface FeedbackSectionProps {
     messageId: string;

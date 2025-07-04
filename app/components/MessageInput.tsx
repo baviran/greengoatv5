@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Icon } from './chatAppHelpersAndData';
+import { Icon } from '@/app/components/icons';
 import { useChatStore } from '../lib/store/chatStore';
 
 const MessageInput: React.FC = () => {

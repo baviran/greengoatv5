@@ -8,8 +8,8 @@ import { useMenuNavigation } from "@/app/hooks/tiptap/use-menu-navigation"
 import { useTiptapEditor } from "@/app/hooks/tiptap/use-tiptap-editor"
 
 // --- Icons ---
+import { HighlighterIcon } from "@/app/components/icons"
 import { BanIcon } from "@/app/components/tiptap/tiptap-icons/ban-icon"
-import { HighlighterIcon } from "@/app/components/tiptap/tiptap-icons/highlighter-icon"
 
 // --- Lib ---
 import { isMarkInSchema } from "@/app/lib/tiptap/tiptap-utils"

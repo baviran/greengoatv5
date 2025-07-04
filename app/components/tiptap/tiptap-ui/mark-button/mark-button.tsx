@@ -7,13 +7,15 @@ import { isNodeSelection, type Editor } from "@tiptap/react"
 import { useTiptapEditor } from "@/app/hooks/tiptap/use-tiptap-editor"
 
 // --- Icons ---
-import { BoldIcon } from "@/app/components/tiptap/tiptap-icons/bold-icon"
-import { Code2Icon } from "@/app/components/tiptap/tiptap-icons/code2-icon"
-import { ItalicIcon } from "@/app/components/tiptap/tiptap-icons/italic-icon"
-import { StrikeIcon } from "@/app/components/tiptap/tiptap-icons/strike-icon"
-import { SubscriptIcon } from "@/app/components/tiptap/tiptap-icons/subscript-icon"
-import { SuperscriptIcon } from "@/app/components/tiptap/tiptap-icons/superscript-icon"
-import { UnderlineIcon } from "@/app/components/tiptap/tiptap-icons/underline-icon"
+import { 
+  BoldIcon, 
+  Code2Icon, 
+  ItalicIcon, 
+  StrikeIcon, 
+  SubscriptIcon, 
+  SuperscriptIcon, 
+  UnderlineIcon 
+} from "@/app/components/icons"
 
 // --- Lib ---
 import { isMarkInSchema } from "@/app/lib/tiptap/tiptap-utils"

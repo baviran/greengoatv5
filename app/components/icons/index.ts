@@ -31,6 +31,19 @@ export { Heading1Icon } from './editor/headings/heading-1-icon'
 export { ArrowLeftIcon } from './editor/navigation/arrow-left-icon'
 export { ChevronDownIcon } from './editor/navigation/chevron-down-icon'
 
+// Content icons
+export { LinkIcon } from './editor/content/link-icon'
+export { ImagePlusIcon } from './editor/content/image-plus-icon'
+
+// List icons
+export { ListIcon } from './editor/lists/list-icon'
+
+// Block icons
+export { BlockQuoteIcon } from './editor/blocks/block-quote-icon'
+
+// Additional heading icons
+export { Heading2Icon } from './editor/headings/heading-2-icon'
+
 // === CHAT ICONS ===
 export { 
   ChatIcon,
@@ -54,6 +67,7 @@ export { CodeIcon as Code2Icon } from './editor/formatting/code-icon'
 export { UndoIcon as Undo2Icon } from './editor/actions/undo-icon'
 export { RedoIcon as Redo2Icon } from './editor/actions/redo-icon'
 export { Heading1Icon as HeadingOneIcon } from './editor/headings/heading-1-icon'
+export { Heading2Icon as HeadingTwoIcon } from './editor/headings/heading-2-icon'
 
 // === ORGANIZED GROUPS ===
 import { BoldIcon } from './editor/formatting/bold-icon'

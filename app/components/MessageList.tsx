@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useRef} from 'react';
-import {Icon} from './chatAppHelpersAndData';
+import { Icon } from '@/app/components/icons';
 import {useChatStore} from '../lib/store/chatStore';
 import FeedbackSection from './FeedbackSection';
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Icon, assistantData } from './chatAppHelpersAndData';
+import { Icon } from '@/app/components/icons';
+import { assistantData } from './chatAppHelpersAndData';
 import { useChatStore } from '../lib/store/chatStore';
 
 const Sidebar: React.FC = () => {

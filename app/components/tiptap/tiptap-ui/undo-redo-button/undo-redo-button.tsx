@@ -7,8 +7,7 @@ import { type Editor } from "@tiptap/react"
 import { useTiptapEditor } from "@/app/hooks/tiptap/use-tiptap-editor"
 
 // --- Icons ---
-import { Redo2Icon } from "@/app/components/tiptap/tiptap-icons/redo2-icon"
-import { Undo2Icon } from "@/app/components/tiptap/tiptap-icons/undo2-icon"
+import { Redo2Icon, Undo2Icon } from "@/app/components/icons"
 
 // --- UI Primitives ---
 import type { ButtonProps } from "@/app/components/tiptap/tiptap-ui-primitive/button"

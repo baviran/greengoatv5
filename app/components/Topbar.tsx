@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icon } from './chatAppHelpersAndData';
+import { Icon } from '@/app/components/icons';
 import { useThemeStore } from '../lib/store/themeStore';
 
 const TopBar: React.FC = () => {
