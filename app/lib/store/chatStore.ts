@@ -105,10 +105,17 @@ const DEFAULT_ASSISTANT_ID = "asst_4OCphfGQ5emHha8ERVPYOjl6";
 
 // Helper function to get auth token
 const getAuthToken = async (): Promise<string | null> => {
-  // This is a hack to get the auth token outside of React components
-  // In a real app, you might want to pass the token as a parameter
-  if (typeof window !== 'undefined' && (window as any).__authToken) {
-    return (window as any).__authToken;
+  // Import Firebase auth directly to get the current user's token
+  if (typeof window !== 'undefined') {
+    try {
+      const { auth } = await import('@/lib/firebase');
+      const user = auth.currentUser;
+      if (user) {
+        return await user.getIdToken(true);
+      }
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+    }
   }
   return null;
 };

@@ -11,7 +11,8 @@ const authenticatedGET = withAuth(async (
   try {
     console.log(`📥 Messages request for user: ${user.uid} (${user.email})`);
     
-    const { threadId } = context.params;
+    const params = await context.params;
+    const { threadId } = params;
     if (!threadId || typeof threadId !== 'string') {
       return NextResponse.json(
           { error: 'Thread ID is required and must be a string' },

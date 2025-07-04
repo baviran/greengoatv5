@@ -1,5 +1,5 @@
-@import 'app/styles/_variables.scss';
-@import 'app/styles/_keyframe-animations.scss';
+@use 'app/styles/_variables.scss';
+@use 'app/styles/_keyframe-animations.scss';
 
 @tailwind base;
 @tailwind components;

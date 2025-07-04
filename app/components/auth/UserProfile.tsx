@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useAuthContext } from '@/context/auth-context';
 
 interface UserProfileProps {
@@ -26,10 +27,12 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     return (
       <div className={`bg-white rounded-lg shadow-md p-6 max-w-sm ${className}`}>
         <div className="flex items-center space-x-4">
-          <img
+          <Image
             src={user.photoURL || '/default-avatar.png'}
             alt={user.displayName || 'User'}
-            className="w-16 h-16 rounded-full"
+            width={64}
+            height={64}
+            className="rounded-full"
           />
           <div>
             <h3 className="font-semibold text-gray-900">{user.displayName}</h3>
@@ -53,10 +56,12 @@ export const UserProfile: React.FC<UserProfileProps> = ({
         onClick={() => setShowDropdown(!showDropdown)}
         className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors"
       >
-        <img
+        <Image
           src={user.photoURL || '/default-avatar.png'}
           alt={user.displayName || 'User'}
-          className="w-8 h-8 rounded-full"
+          width={32}
+          height={32}
+          className="rounded-full"
         />
         <span className="text-sm font-medium text-gray-700 hidden sm:block">
           {user.displayName?.split(' ')[0] || 'User'}
