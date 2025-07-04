@@ -103,7 +103,7 @@ const MessageList: React.FC = () => {
                 <div className="flex justify-end">
                     <div className="max-w-[75%] sm:max-w-[70%] md:max-w-md lg:max-w-lg xl:max-w-xl bg-card text-card-foreground rounded-xl rounded-br-none shadow-sm flex items-center px-3 py-2 sm:px-3.5 sm:py-2.5">
                         <div className="flex-shrink-0 ml-2 rtl:mr-2 rtl:ml-0">
-                            <Icon name="bot" className="w-4 h-4 sm:w-4 sm:h-4 text-card-foreground animate-spin" />
+                            <Icon name="bot" className="w-4 h-4 sm:w-4 sm:h-4 text-card-foreground" />
                         </div>
                         <div className="flex items-center space-x-1 rtl:space-x-reverse">
                             <Icon name="loader2" className="w-4 h-4 text-card-foreground animate-spin" />
