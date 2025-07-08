@@ -10,6 +10,7 @@ type ThemeStore = {
 const getStoredTheme = (): 'dark' | 'light' => {
     if (typeof window === 'undefined') return 'light';
     const stored = localStorage.getItem('theme');
+    // Always default to light if no stored value or invalid value
     return stored === 'dark' ? 'dark' : 'light';
 };
 
@@ -20,7 +21,7 @@ const saveTheme = (theme: 'dark' | 'light') => {
 };
 
 export const useThemeStore = create<ThemeStore>((set, get) => ({
-    value: 'light',
+    value: 'light', // Default to light theme
     
     setTheme: (theme: 'dark' | 'light') => {
         saveTheme(theme);

@@ -21,7 +21,8 @@ export type ChatIconName =
   | 'send' 
   | 'loader2' 
   | 'thumbsUp' 
-  | 'thumbsDown';
+  | 'thumbsDown'
+  | 'google';
 
 export interface ChatIconProps {
   name: ChatIconName;

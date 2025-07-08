@@ -25,26 +25,26 @@ export const UserProfile: React.FC<UserProfileProps> = ({
 
   if (showFullProfile) {
     return (
-      <div className={`bg-white rounded-lg shadow-md p-6 max-w-sm ${className}`}>
-        <div className="flex items-center space-x-4">
+      <div className={`bg-card rounded-lg border border-border p-6 max-w-sm ${className}`} dir="rtl">
+        <div className="flex items-center space-x-4 rtl:space-x-reverse">
           <Image
             src={user.photoURL || '/default-avatar.png'}
-            alt={user.displayName || 'User'}
+            alt={user.displayName || 'משתמש'}
             width={64}
             height={64}
             className="rounded-full"
           />
           <div>
-            <h3 className="font-semibold text-gray-900">{user.displayName}</h3>
-            <p className="text-gray-600 text-sm">{user.email}</p>
+            <h3 className="font-semibold text-foreground">{user.displayName}</h3>
+            <p className="text-muted-foreground text-sm">{user.email}</p>
           </div>
         </div>
         <button
           onClick={handleSignOut}
           disabled={loading}
-          className="mt-4 w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2 px-4 rounded-lg transition-colors"
+          className="mt-4 w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white py-2 px-4 rounded-lg transition-colors"
         >
-          {loading ? 'Signing out...' : 'Sign out'}
+          {loading ? 'מתנתק...' : 'התנתק'}
         </button>
       </div>
     );
@@ -54,20 +54,20 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     <div className={`relative ${className}`}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors"
+        className="flex items-center space-x-2 rtl:space-x-reverse bg-muted hover:bg-muted/80 rounded-full p-2 transition-colors"
       >
         <Image
           src={user.photoURL || '/default-avatar.png'}
-          alt={user.displayName || 'User'}
+          alt={user.displayName || 'משתמש'}
           width={32}
           height={32}
           className="rounded-full"
         />
-        <span className="text-sm font-medium text-gray-700 hidden sm:block">
-          {user.displayName?.split(' ')[0] || 'User'}
+        <span className="text-sm font-medium text-foreground hidden sm:block">
+          {user.displayName?.split(' ')[0] || 'משתמש'}
         </span>
         <svg 
-          className="w-4 h-4 text-gray-500" 
+          className="w-4 h-4 text-muted-foreground" 
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
@@ -77,18 +77,18 @@ export const UserProfile: React.FC<UserProfileProps> = ({
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-          <div className="px-4 py-3 border-b border-gray-200">
-            <p className="text-sm font-medium text-gray-900">{user.displayName}</p>
-            <p className="text-sm text-gray-600">{user.email}</p>
+        <div className="absolute left-0 mt-2 w-48 bg-card rounded-lg border border-border shadow-lg z-50" dir="rtl">
+          <div className="px-4 py-3 border-b border-border">
+            <p className="text-sm font-medium text-foreground">{user.displayName}</p>
+            <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
           <div className="py-2">
             <button
               onClick={handleSignOut}
               disabled={loading}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+              className="w-full text-right px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
             >
-              {loading ? 'Signing out...' : 'Sign out'}
+              {loading ? 'מתנתק...' : 'התנתק'}
             </button>
           </div>
         </div>

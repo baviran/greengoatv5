@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#f0f9ff"/>
+  
+  <!-- Ground -->
+  <rect x="0" y="250" width="400" height="50" fill="#22c55e"/>
+  
+  <!-- Main building -->
+  <rect x="150" y="100" width="100" height="150" fill="#16a34a" rx="5"/>
+  
+  <!-- Building details -->
+  <rect x="160" y="120" width="15" height="20" fill="#ffffff" rx="2"/>
+  <rect x="180" y="120" width="15" height="20" fill="#ffffff" rx="2"/>
+  <rect x="205" y="120" width="15" height="20" fill="#ffffff" rx="2"/>
+  <rect x="225" y="120" width="15" height="20" fill="#ffffff" rx="2"/>
+  
+  <rect x="160" y="160" width="15" height="20" fill="#ffffff" rx="2"/>
+  <rect x="180" y="160" width="15" height="20" fill="#ffffff" rx="2"/>
+  <rect x="205" y="160" width="15" height="20" fill="#ffffff" rx="2"/>
+  <rect x="225" y="160" width="15" height="20" fill="#ffffff" rx="2"/>
+  
+  <rect x="160" y="200" width="15" height="20" fill="#ffffff" rx="2"/>
+  <rect x="180" y="200" width="15" height="20" fill="#ffffff" rx="2"/>
+  <rect x="205" y="200" width="15" height="20" fill="#ffffff" rx="2"/>
+  <rect x="225" y="200" width="15" height="20" fill="#ffffff" rx="2"/>
+  
+  <!-- Door -->
+  <rect x="185" y="210" width="30" height="40" fill="#0f172a" rx="15"/>
+  
+  <!-- Left building -->
+  <rect x="50" y="150" width="80" height="100" fill="#15803d" rx="5"/>
+  <rect x="60" y="170" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="80" y="170" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="100" y="170" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="60" y="200" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="80" y="200" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="100" y="200" width="12" height="15" fill="#ffffff" rx="2"/>
+  
+  <!-- Right building -->
+  <rect x="270" y="120" width="80" height="130" fill="#166534" rx="5"/>
+  <rect x="280" y="140" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="300" y="140" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="320" y="140" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="280" y="170" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="300" y="170" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="320" y="170" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="280" y="200" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="300" y="200" width="12" height="15" fill="#ffffff" rx="2"/>
+  <rect x="320" y="200" width="12" height="15" fill="#ffffff" rx="2"/>
+  
+  <!-- Trees -->
+  <circle cx="100" cy="240" r="15" fill="#22c55e"/>
+  <rect x="97" y="240" width="6" height="15" fill="#92400e"/>
+  
+  <circle cx="320" cy="240" r="15" fill="#22c55e"/>
+  <rect x="317" y="240" width="6" height="15" fill="#92400e"/>
+  
+  <!-- Title -->
+  <text x="200" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#166534">Green Building</text>
+  <text x="200" y="60" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#166534">Placeholder Image</text>
+</svg> 

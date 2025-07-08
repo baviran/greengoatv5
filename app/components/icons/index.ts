@@ -58,7 +58,8 @@ export {
   SendIcon,
   Loader2Icon,
   ThumbsUpIcon,
-  ThumbsDownIcon
+  ThumbsDownIcon,
+  GoogleIcon
 } from './chat'
 
 // === LEGACY ALIASES ===

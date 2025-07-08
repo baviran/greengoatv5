@@ -220,7 +220,7 @@ const content = {
         {
             "type": "image",
             "attrs": {
-                "src": "/images/green-building-placeholder.png",
+                "src": "/images/green-building-placeholder.svg",
                 "alt": "בניין ירוק",
                 "title": "איור בניין ירוק"
             }
