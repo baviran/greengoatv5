@@ -1,6 +1,7 @@
 import { firestoreAdmin } from '@/lib/firebase-admin';
 import { User, CreateUserData, UpdateUserData, UserValidationResult } from '@/app/types/user';
 import { Logger } from '@/app/lib/utils/logger';
+import { ValidationError, NotFoundError } from '@/app/lib/errors/app-errors';
 
 export class UserService {
   private collection = firestoreAdmin.collection('users');
@@ -128,7 +129,7 @@ export class UserService {
         email: userData.email,
         role: userData.role || 'user'
       });
-      throw new Error('Failed to create user');
+      throw new ValidationError('Failed to create user');
     }
   }
 
@@ -157,7 +158,7 @@ export class UserService {
         email: email,
         updateFields: Object.keys(updateData)
       });
-      throw new Error('Failed to update user');
+      throw new ValidationError('Failed to update user');
     }
   }
 
@@ -179,7 +180,7 @@ export class UserService {
       this.logger.error('Error deleting user', error, undefined, {
         email: email
       });
-      throw new Error('Failed to delete user');
+      throw new NotFoundError('User', email);
     }
   }
 
@@ -243,7 +244,7 @@ export class UserService {
       return sortedUsers;
     } catch (error) {
       this.logger.error('Error getting all users', error);
-      throw new Error('Failed to get users');
+      throw new ValidationError('Failed to get users');
     }
   }
 

@@ -176,6 +176,9 @@ Before submitting code:
 - [ ] HTTP status codes use HTTP_STATUS constants
 - [ ] Request context includes requestId and metadata
 - [ ] Error responses include structured error codes
+- [ ] Use AppError subclasses for application errors
+- [ ] Never throw generic Error objects in business logic
+- [ ] Error handling uses ErrorHandler.getInstance() methods
 
 ## 🚀 Performance Guidelines
 
@@ -258,6 +261,93 @@ export const GET = withAuth(async (request: NextRequest, authResult) => {
   // Manual response handling without unified format
   return NextResponse.json({ data: result });
 });
+```
+
+## 🔵 Error Handling Standards
+
+### Error Type Rules
+- **Always throw AppError subclasses for application errors**
+- **Never throw generic Error objects in business logic**
+- **Use ErrorHandler.getInstance() for consistent error processing**
+- **Include context and details in error objects**
+
+### Error Throwing Pattern
+```typescript
+// ✅ Good - use specific error types
+import { ValidationError, AuthenticationError, NotFoundError } from '@/app/lib/errors/app-errors';
+
+// Validation error
+if (!email) {
+  throw new ValidationError('Email is required', 'email');
+}
+
+// Authentication error  
+if (!user) {
+  throw new AuthenticationError('User not authenticated');
+}
+
+// Not found error
+if (!foundUser) {
+  throw new NotFoundError('User', userId);
+}
+
+// ❌ Bad - generic Error
+throw new Error('Something went wrong');
+```
+
+### Error Handling Pattern
+```typescript
+// ✅ Good - use ErrorHandler
+import { ErrorHandler } from '@/app/lib/errors/error-handler';
+
+try {
+  // ... business logic
+} catch (error) {
+  const errorHandler = ErrorHandler.getInstance();
+  return errorHandler.handleApiError(error as Error, context, req);
+}
+
+// ❌ Bad - manual error handling
+catch (error) {
+  return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+}
+```
+
+### Validation Error Handling
+```typescript
+// ✅ Good - structured validation errors
+import { ValidationError, MissingFieldError } from '@/app/lib/errors/app-errors';
+
+const validateUser = (data: any) => {
+  if (!data.email) {
+    throw new MissingFieldError('email');
+  }
+  if (!isValidEmail(data.email)) {
+    throw new ValidationError('Invalid email format', 'email');
+  }
+};
+
+// ❌ Bad - generic validation
+if (!data.email) {
+  throw new Error('Email is required');
+}
+```
+
+### Business Logic Error Handling
+```typescript
+// ✅ Good - specific business errors
+import { BusinessLogicError, ConflictError } from '@/app/lib/errors/app-errors';
+
+if (user.promptCount <= 0) {
+  throw new BusinessLogicError('No prompts remaining. Please upgrade.');
+}
+
+if (existingUser) {
+  throw new ConflictError('User', email);
+}
+
+// ❌ Bad - unclear business errors
+throw new Error('User exists');
 ```
 
 ## 📋 Examples

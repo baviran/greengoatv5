@@ -3,12 +3,13 @@ import { Icon } from '@/app/components/icons';
 import {useAuthenticatedChatStore} from '../lib/store/chatStore';
 import FeedbackSection from './FeedbackSection';
 import { Logger } from '@/app/lib/utils/logger';
+import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';
 
 const logger = Logger.getInstance().withContext({
   component: 'message-list'
 });
 
-const MessageList: React.FC = () => {
+const MessageListComponent: React.FC = () => {
     const { activeThreadId, messagesByThread, isLoading, isSending, submitFeedback } = useAuthenticatedChatStore();
 
     const messages = useMemo(() => {
@@ -136,5 +137,17 @@ const MessageList: React.FC = () => {
         </div>
     );
 };
+
+// Wrap with error boundary
+const MessageList = withErrorBoundary(MessageListComponent, {
+    onError: (error, errorInfo) => {
+        logger.error('MessageList error boundary triggered', error, {
+            component: 'message-list',
+            action: 'message-list-error'
+        }, {
+            errorInfo: errorInfo.componentStack
+        });
+    }
+});
 
 export default MessageList;

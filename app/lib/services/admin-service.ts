@@ -1,5 +1,6 @@
 import { UserCreateRequest, UserUpdateRequest } from '@/app/types/user';
 import { Logger } from '@/app/lib/utils/logger';
+import { ExternalServiceError, AuthenticationError } from '@/app/lib/errors/app-errors';
 
 interface AdminUser {
   email: string;
@@ -65,7 +66,7 @@ export class AdminService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || `Request failed: ${response.statusText}`);
+      throw new ExternalServiceError(error.error || `Request failed: ${response.statusText}`);
     }
 
     return response;
@@ -186,7 +187,7 @@ export function useAdminService() {
       
       if (!user) {
         logger.warn('User not authenticated for admin service');
-        throw new Error('User not authenticated');
+        throw new AuthenticationError('User not authenticated');
       }
 
       const token = await user.getIdToken(true);
@@ -196,7 +197,10 @@ export function useAdminService() {
         userId: user?.uid,
         userEmail: user?.email
       });
-      throw error;
+      if (error instanceof AuthenticationError) {
+        throw error;
+      }
+      throw new ExternalServiceError(`Admin service error: ${error}`);
     }
   };
 

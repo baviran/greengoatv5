@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuthContext } from '@/context/auth-context';
 import { SignInButton } from './SignInButton';
 import { Logger } from '@/app/lib/utils/logger';
+import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';
 
 const logger = Logger.getInstance().withContext({
   component: 'auth-guard'
@@ -18,7 +19,7 @@ interface AuthGuardProps {
 
 type UserValidationStatus = 'loading' | 'valid' | 'invalid' | 'error';
 
-export const AuthGuard: React.FC<AuthGuardProps> = ({ 
+const AuthGuardComponent: React.FC<AuthGuardProps> = ({ 
   children, 
   fallback,
   requireAuth = true,
@@ -189,4 +190,16 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
 
   // User is authenticated and validated
   return <>{children}</>;
-}; 
+};
+
+// Wrap with error boundary
+export const AuthGuard = withErrorBoundary(AuthGuardComponent, {
+  onError: (error, errorInfo) => {
+    logger.error('AuthGuard error boundary triggered', error, {
+      component: 'auth-guard',
+      action: 'auth-error'
+    }, {
+      errorInfo: errorInfo.componentStack
+    });
+  }
+}); 

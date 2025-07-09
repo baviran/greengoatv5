@@ -4,6 +4,7 @@ import { Logger } from '@/app/lib/utils/logger';
 import { feedbackCache } from '@/app/lib/services/feedbackCache';
 import { withApiResponse, createApiResponse, AuthResultWithContext } from '@/app/lib/utils/response-middleware';
 import { ApiResponseBuilder, HTTP_STATUS } from '@/app/lib/utils/api-response';
+import { OpenAIError } from '@/app/lib/errors/app-errors';
 
 import {
     AssistantRun,
@@ -140,7 +141,7 @@ async function processRun(
 
     if (attempt >= maxAttempts && isActiveRunStatus(run.status)) {
         logger.error(`Run ${run.id} timed out after ${maxAttempts} attempts with status ${run.status}.`);
-        throw new Error(`Run timed out with status: ${run.status}`);
+        throw new OpenAIError(`Run timed out with status: ${run.status}`);
     }
 
     if (run.status === 'completed') {
@@ -150,7 +151,7 @@ async function processRun(
         return response;
     } else if (isFailedTerminalRunStatus(run.status)) {
         logger.error(`Run ${run.id} ended with status: ${run.status}. Last error: ${JSON.stringify(run.last_error)}`);
-        throw new Error(`Run ${run.status}. Details: ${JSON.stringify(run.last_error?.message || run.last_error)}`);
+        throw new OpenAIError(`Run ${run.status}. Details: ${JSON.stringify(run.last_error?.message || run.last_error)}`);
     }
 
     logger.warn(`Run ${run.id} ended in an unexpected state: ${run.status}`);

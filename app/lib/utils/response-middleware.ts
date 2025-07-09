@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ApiResponseBuilder, HTTP_STATUS, createRequestContext, RequestContext } from './api-response';
+import { HTTP_STATUS, createRequestContext, RequestContext } from './api-response';
 import { withAuth } from '@/lib/auth-middleware';
 import { Logger } from './logger';
+import { ErrorHandler } from '../errors/error-handler';
 
 // Enhanced auth result that includes request context
 export interface AuthResultWithContext {
@@ -61,15 +62,9 @@ export function withApiResponse(
         } catch (error) {
           logger.error('API request failed', error, requestContext);
           
-          // Return unified error response
-          const errorResponse = ApiResponseBuilder.internalError(
-            'Internal server error',
-            requestContext
-          );
-          
-          return NextResponse.json(errorResponse, {
-            status: HTTP_STATUS.INTERNAL_SERVER_ERROR
-          });
+          // Use the new ErrorHandler for consistent error processing
+          const errorHandler = ErrorHandler.getInstance();
+          return errorHandler.handleApiError(error as Error, requestContext, req);
         }
       });
     } else {
@@ -89,15 +84,9 @@ export function withApiResponse(
         } catch (error) {
           logger.error('API request failed', error, requestContext);
           
-          // Return unified error response
-          const errorResponse = ApiResponseBuilder.internalError(
-            'Internal server error',
-            requestContext
-          );
-          
-          return NextResponse.json(errorResponse, {
-            status: HTTP_STATUS.INTERNAL_SERVER_ERROR
-          });
+          // Use the new ErrorHandler for consistent error processing
+          const errorHandler = ErrorHandler.getInstance();
+          return errorHandler.handleApiError(error as Error, requestContext, req);
         }
       };
     }

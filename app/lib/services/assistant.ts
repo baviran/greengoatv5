@@ -1,5 +1,6 @@
 import {Logger} from "@/app/lib/utils/logger";
 import { getAirtableService} from "@/app/lib/services/airtable";
+import { ExternalServiceError } from '@/app/lib/errors/app-errors';
 
 const logger = Logger.getInstance();
 
@@ -34,6 +35,6 @@ export async function getClauseData(clause: string) {
             timestamp: new Date().toISOString()
         });
         
-        return [{ error: 'שגיאה בשליפת נתונים מהמערכת' }];
+        throw new ExternalServiceError(`Failed to fetch clause data: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
 }

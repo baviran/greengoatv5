@@ -3,6 +3,7 @@ import { Logger } from '@/app/lib/utils/logger';
 import axios from "axios";
 import https from 'https';
 import {AirtableSchema} from "@/app/types/airtable";
+import { AirtableError } from '@/app/lib/errors/app-errors';
 
 const logger = Logger.getInstance();
 
@@ -31,12 +32,12 @@ export class AirtableService {
         
         if (!this.apiKey) {
             logger.error('❌ AIRTABLE_API_KEY environment variable is not set');
-            throw new Error('AIRTABLE_API_KEY environment variable is not set');
+            throw new AirtableError('AIRTABLE_API_KEY environment variable is not set');
         }
         
         if (!baseId) {
             logger.error('❌ Airtable Base ID is not provided');
-            throw new Error('Airtable Base ID is not provided');
+            throw new AirtableError('Airtable Base ID is not provided');
         }
         
         // Validate API key format (Airtable keys start with 'key' or 'pat')
@@ -50,7 +51,7 @@ export class AirtableService {
             logger.info(`✅ AirtableService initialized successfully for base: ${baseId}`);
         } catch (error) {
             logger.error(`❌ Failed to initialize AirtableService:`, error);
-            throw error;
+            throw new AirtableError(`Failed to initialize AirtableService: ${error}`);
         }
     }
 
@@ -118,7 +119,7 @@ export class AirtableService {
                 logger.error('⏰ Rate Limited - Too Many Requests');
             }
             
-            throw error;
+            throw new AirtableError(`Airtable API error: ${error.message || error}`);
         }
     }
 
@@ -133,7 +134,7 @@ export class AirtableService {
             };
         } catch (error) {
             logger.error(`❌ Error fetching record ${recordId} from ${tableName}:`, error);
-            throw error;
+            throw new AirtableError(`Error fetching record ${recordId} from ${tableName}: ${error}`);
         }
     }
 
@@ -175,7 +176,7 @@ export class AirtableService {
                 baseId: this.baseId,
                 tableId: tableId
             });
-            throw error;
+            throw new AirtableError(`Error creating record: ${error.message || error}`);
         }
     }
 
@@ -210,7 +211,7 @@ export class AirtableService {
                 responseData: error.response?.data,
                 requestPayload: { fields }
             });
-            throw error;
+            throw new AirtableError(`Error updating record: ${error.message || error}`);
         }
     }
 
@@ -221,7 +222,7 @@ export class AirtableService {
             return recordId;
         } catch (error) {
             logger.error(`Error deleting record ${recordId} from ${tableName}:`, error);
-            throw error;
+            throw new AirtableError(`Error deleting record ${recordId} from ${tableName}: ${error}`);
         }
     }
 
@@ -235,7 +236,7 @@ export class AirtableService {
             }));
         } catch (error) {
             logger.error(`Error creating records in ${tableName}:`, error);
-            throw error;
+            throw new AirtableError(`Error creating records in ${tableName}: ${error}`);
         }
     }
 
@@ -251,7 +252,7 @@ export class AirtableService {
             }));
         } catch (error) {
             logger.error(`Error updating records in ${tableName}:`, error);
-            throw error;
+            throw new AirtableError(`Error updating records in ${tableName}: ${error}`);
         }
     }
 
@@ -273,7 +274,7 @@ export class AirtableService {
                 error instanceof Error ? error.message : String(error),
                 'Error fetching schema:'
             );
-            throw error;
+            throw new AirtableError(`Error fetching schema: ${error}`);
         }
     }
 
@@ -315,7 +316,7 @@ export class AirtableService {
         }
         catch (error) {
             logger.error(`Error getTableName:`, error);
-            throw error;
+            throw new AirtableError(`Error getting table name: ${error}`);
         }
     }
 
@@ -335,7 +336,7 @@ export class AirtableService {
         }
         catch (error) {
             logger.error(`Error renameTableName:`, error);
-            throw error;
+            throw new AirtableError(`Error renaming table name: ${error}`);
         }
     }
 
@@ -345,7 +346,7 @@ export class AirtableService {
             const table = tables.find(t => t.id === tableId);
 
             if (!table) {
-                throw new Error(`Table with ID ${tableId} not found`);
+                throw new AirtableError(`Table with ID ${tableId} not found`);
             }
 
             logger.info(`Looking for field with exact name: '${oldName}'`);
@@ -358,7 +359,7 @@ export class AirtableService {
                 logger.info(`Field name not found using strict match. Trying locale-insensitive match.`);
                 const fuzzy = table.fields.find(f => f.name.toLowerCase() === oldName.toLowerCase());
                 if (!fuzzy) {
-                    throw new Error(`Field '${oldName}' not found in table '${table.name}'`);
+                    throw new AirtableError(`Field '${oldName}' not found in table '${table.name}'`);
                 }
                 logger.info(`Found field using normalized match: '${fuzzy.name}'`);
             }
@@ -390,7 +391,7 @@ export class AirtableService {
                 `Error renaming column from '${oldName}' to '${newName}' in table '${tableId}':`,
                 error.response?.data || error.message
             );
-            throw error;
+            throw new AirtableError(`Error renaming column from '${oldName}' to '${newName}' in table '${tableId}': ${error.message || error}`);
         }
     }
 
@@ -482,7 +483,7 @@ export class AirtableService {
             return record;
         } catch (error) {
             logger.error(`Failed to log assistant interaction for user: ${fields.userId || 'anonymous'}`, error);
-            throw error;
+            throw new AirtableError(`Failed to log assistant interaction for user: ${fields.userId || 'anonymous'}: ${error}`);
         }
     }
 

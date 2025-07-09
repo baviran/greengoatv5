@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import { useAuthContext } from '@/context/auth-context';
 import { Logger } from '@/app/lib/utils/logger';
+import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';
 
 const logger = Logger.getInstance().withContext({
   component: 'admin-panel'
 });
 
-export const AdminPanel: React.FC = () => {
+const AdminPanelComponent: React.FC = () => {
   const { user, getIdToken } = useAuthContext();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'user' | 'admin'>('user');
@@ -200,26 +201,30 @@ export const AdminPanel: React.FC = () => {
           <button
             onClick={handleMigrateUsers}
             disabled={migrationLoading}
-            className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-muted text-white py-2 px-4 rounded-md transition-colors"
+            className="w-full bg-secondary hover:bg-secondary/90 disabled:bg-muted text-secondary-foreground py-2 px-4 rounded-md transition-colors"
           >
-            {migrationLoading ? 'מעביר נתונים...' : 'העבר משתמשים למבנה חדש'}
+            {migrationLoading ? 'מעביר...' : 'העבר משתמשים'}
           </button>
         </div>
 
         {message && (
-          <div className={`p-3 rounded-md ${
-            message.startsWith('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}>
+          <div className="p-3 rounded-md bg-muted/50 text-foreground text-sm">
             {message}
           </div>
         )}
       </div>
-
-      <div className="mt-6 pt-4 border-t border-border">
-        <p className="text-sm text-muted-foreground">
-          מחובר כ: <span className="font-medium text-foreground">{user.email}</span>
-        </p>
-      </div>
     </div>
   );
-}; 
+};
+
+// Wrap with error boundary
+export const AdminPanel = withErrorBoundary(AdminPanelComponent, {
+  onError: (error, errorInfo) => {
+    logger.error('AdminPanel error boundary triggered', error, {
+      component: 'admin-panel',
+      action: 'admin-panel-error'
+    }, {
+      errorInfo: errorInfo.componentStack
+    });
+  }
+}); 

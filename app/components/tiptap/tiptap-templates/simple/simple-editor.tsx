@@ -67,6 +67,9 @@ import { handleImageUpload } from "@/app/lib/tiptap/tiptap-utils"
 // --- Logger ---
 import { Logger } from "@/app/lib/utils/logger"
 
+// --- Error Boundary ---
+import { withErrorBoundary } from "@/app/components/error-boundary/ErrorBoundary"
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 // --- Styles ---
@@ -168,7 +171,7 @@ const MobileToolbarContent = ({
   </>
 )
 
-export function SimpleEditor() {
+function SimpleEditorComponent() {
   const isMobile = useMobile()
   const windowSize = useWindowSize()
   const [mobileView, setMobileView] = React.useState<
@@ -251,3 +254,15 @@ export function SimpleEditor() {
     </EditorContext.Provider>
   )
 }
+
+// Wrap with error boundary
+export const SimpleEditor = withErrorBoundary(SimpleEditorComponent, {
+  onError: (error, errorInfo) => {
+    logger.error('SimpleEditor error boundary triggered', error, {
+      component: 'simple-editor',
+      action: 'tiptap-editor-error'
+    }, {
+      errorInfo: errorInfo.componentStack
+    });
+  }
+});

@@ -1,5 +1,6 @@
 import { UserContext } from '@/app/types/chat';
 import { Logger } from '@/app/lib/utils/logger';
+import { AuthenticationError, ExternalServiceError } from '@/app/lib/errors/app-errors';
 
 const logger = Logger.getInstance().withContext({
   component: 'chat-service'
@@ -53,7 +54,7 @@ export async function sendMessageToAssistant(
                 userId: userContext?.uid,
                 status: res.status
             });
-            throw new Error('אנא התחבר כדי להשתמש בשירות');
+            throw new AuthenticationError('אנא התחבר כדי להשתמש בשירות');
         }
         if (res.status === 403) {
             logger.warn('User lacks permission for chat thread', undefined, {
@@ -61,7 +62,7 @@ export async function sendMessageToAssistant(
                 threadId: threadId,
                 status: res.status
             });
-            throw new Error('אין לך הרשאה לגשת לשיחה זו');
+            throw new AuthenticationError('אין לך הרשאה לגשת לשיחה זו');
         }
         logger.error('Chat API error', undefined, undefined, {
             userId: userContext?.uid,
@@ -69,7 +70,7 @@ export async function sendMessageToAssistant(
             status: res.status,
             error: err
         });
-        throw new Error(err.error || 'שגיאה בתקשורת עם השרת');
+        throw new ExternalServiceError(err.error || 'שגיאה בתקשורת עם השרת');
     }
 
     const data = await res.json();
@@ -131,7 +132,7 @@ export async function sendFeedback(
                 runId: runId,
                 status: res.status
             });
-            throw new Error('אנא התחבר כדי לשלוח משוב');
+            throw new AuthenticationError('אנא התחבר כדי לשלוח משוב');
         }
         if (res.status === 403) {
             logger.warn('User lacks permission for feedback', undefined, {
@@ -139,7 +140,7 @@ export async function sendFeedback(
                 runId: runId,
                 status: res.status
             });
-            throw new Error('אין לך הרשאה לשלוח משוב על הודעה זו');
+            throw new AuthenticationError('אין לך הרשאה לשלוח משוב על הודעה זו');
         }
         logger.error('Feedback API error', undefined, undefined, {
             userId: userContext?.uid,
@@ -147,7 +148,7 @@ export async function sendFeedback(
             status: res.status,
             error: err
         });
-        throw new Error(err.error || 'שגיאה בשליחת המשוב');
+        throw new ExternalServiceError(err.error || 'שגיאה בשליחת המשוב');
     }
 
     const result = await res.json();
@@ -191,14 +192,14 @@ export async function getUserThreads(
                 userId: userContext?.uid,
                 status: res.status
             });
-            throw new Error('אנא התחבר כדי לטעון שיחות');
+            throw new AuthenticationError('אנא התחבר כדי לטעון שיחות');
         }
         logger.error('Threads API error', undefined, undefined, {
             userId: userContext?.uid,
             status: res.status,
             error: err
         });
-        throw new Error(err.error || 'שגיאה בטעינת השיחות');
+        throw new ExternalServiceError(err.error || 'שגיאה בטעינת השיחות');
     }
 
     const data = await res.json();
@@ -243,7 +244,7 @@ export async function getUserMessages(
                 threadId: threadId,
                 status: res.status
             });
-            throw new Error('אנא התחבר כדי לטעון הודעות');
+            throw new AuthenticationError('אנא התחבר כדי לטעון הודעות');
         }
         if (res.status === 403) {
             logger.warn('User lacks permission for thread messages', undefined, {
@@ -251,7 +252,7 @@ export async function getUserMessages(
                 threadId: threadId,
                 status: res.status
             });
-            throw new Error('אין לך הרשאה לגשת לשיחה זו');
+            throw new AuthenticationError('אין לך הרשאה לגשת לשיחה זו');
         }
         logger.error('Messages API error', undefined, undefined, {
             userId: userContext?.uid,
@@ -259,7 +260,7 @@ export async function getUserMessages(
             status: res.status,
             error: err
         });
-        throw new Error(err.error || 'שגיאה בטעינת ההודעות');
+        throw new ExternalServiceError(err.error || 'שגיאה בטעינת ההודעות');
     }
 
     const data = await res.json();

@@ -4,12 +4,13 @@ import { useAuthenticatedChatStore } from '../lib/store/chatStore';
 import { useAuthContext } from '@/context/auth-context';
 import { AuthGuard } from './auth/AuthGuard';
 import { Logger } from '@/app/lib/utils/logger';
+import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';
 
 const logger = Logger.getInstance().withContext({
   component: 'message-input'
 });
 
-const MessageInput: React.FC = () => {
+const MessageInputComponent: React.FC = () => {
     const { sendMessage, isLoading, isSending } = useAuthenticatedChatStore();
     const { user } = useAuthContext();
     const [message, setMessage] = useState('');
@@ -92,5 +93,17 @@ const MessageInput: React.FC = () => {
         </AuthGuard>
     );
 };
+
+// Wrap with error boundary
+const MessageInput = withErrorBoundary(MessageInputComponent, {
+    onError: (error, errorInfo) => {
+        logger.error('MessageInput error boundary triggered', error, {
+            component: 'message-input',
+            action: 'message-input-error'
+        }, {
+            errorInfo: errorInfo.componentStack
+        });
+    }
+});
 
 export default MessageInput;
