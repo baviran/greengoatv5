@@ -3,6 +3,11 @@ import { Icon } from '@/app/components/icons';
 import { useAuthenticatedChatStore } from '../lib/store/chatStore';
 import { useAuthContext } from '@/context/auth-context';
 import { AuthGuard } from './auth/AuthGuard';
+import { Logger } from '@/app/lib/utils/logger';
+
+const logger = Logger.getInstance().withContext({
+  component: 'message-input'
+});
 
 const MessageInput: React.FC = () => {
     const { sendMessage, isLoading, isSending } = useAuthenticatedChatStore();
@@ -18,7 +23,12 @@ const MessageInput: React.FC = () => {
             try {
                 await sendMessage(messageToSend);
             } catch (error) {
-                console.error('❌ MessageInput: Error sending message:', error);
+                logger.error('Error sending message', error, undefined, {
+                    userId: user?.uid,
+                    userEmail: user?.email,
+                    messageLength: messageToSend.length,
+                    action: 'send-user-message'
+                });
             }
         }
     };

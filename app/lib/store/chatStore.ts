@@ -2,6 +2,11 @@ import React from "react";
 import { create } from "zustand";
 import { Message, Thread, UserContext } from "@/app/types/chat";
 import { useAuthContext } from "@/context/auth-context";
+import { Logger } from "@/app/lib/utils/logger";
+
+const logger = Logger.getInstance().withContext({
+  component: 'chat-store'
+});
 
 // localStorage keys
 const THREADS_STORAGE_KEY = 'chat_threads_v2'; // Incremented version for user-specific storage
@@ -13,7 +18,11 @@ const getStoredThreads = (assistantId: string, userId?: string): Thread[] => {
     const stored = localStorage.getItem(`${THREADS_STORAGE_KEY}_${assistantId}_${userId}`);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error('Error parsing stored threads:', error);
+    logger.error('Error parsing stored threads', error, undefined, {
+      assistantId,
+      userId,
+      storageKey: `${THREADS_STORAGE_KEY}_${assistantId}_${userId}`
+    });
     return [];
   }
 };
@@ -23,7 +32,12 @@ const saveThreadsToStorage = (assistantId: string, threads: Thread[], userId?: s
   try {
     localStorage.setItem(`${THREADS_STORAGE_KEY}_${assistantId}_${userId}`, JSON.stringify(threads));
   } catch (error) {
-    console.error('Error saving threads to localStorage:', error);
+    logger.error('Error saving threads to localStorage', error, undefined, {
+      assistantId,
+      userId,
+      threadsCount: threads.length,
+      storageKey: `${THREADS_STORAGE_KEY}_${assistantId}_${userId}`
+    });
   }
 };
 
@@ -32,13 +46,21 @@ const clearOldStorage = () => {
   if (typeof window === 'undefined') return;
   try {
     const keys = Object.keys(localStorage);
+    const removedKeys: string[] = [];
     keys.forEach(key => {
       if (key.startsWith('chat_threads_v1_')) {
         localStorage.removeItem(key);
+        removedKeys.push(key);
       }
     });
+    if (removedKeys.length > 0) {
+      logger.debug('Cleared old storage keys', undefined, {
+        removedKeys,
+        count: removedKeys.length
+      });
+    }
   } catch (error) {
-    console.error('Error clearing old storage:', error);
+    logger.error('Error clearing old storage', error);
   }
 };
 
@@ -114,7 +136,9 @@ const getAuthToken = async (): Promise<string | null> => {
         return await user.getIdToken(true);
       }
     } catch (error) {
-      console.error('Error getting auth token:', error);
+      logger.error('Error getting auth token', error, undefined, {
+        hasWindow: typeof window !== 'undefined'
+      });
     }
   }
   return null;
@@ -136,7 +160,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   initializeStore: (userContext?: UserContext | null) => {
     if (get().isInitialized && get().userContext?.uid === userContext?.uid) return;
     
-    console.log(`🔄 Initializing chat store for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Initializing chat store', undefined, {
+      userId: userContext?.uid,
+      userEmail: userContext?.email,
+      isReinitialization: get().isInitialized
+    });
     
     // Clear old storage format
     clearOldStorage();
@@ -156,7 +184,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       userContext: userContext || null
     });
 
-    console.log(`✅ Loaded ${userThreads.length} threads for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Chat store initialized successfully', undefined, {
+      userId: userContext?.uid,
+      threadsLoaded: userThreads.length,
+      hasActiveThread: userThreads.length > 0
+    });
 
     if (userThreads.length > 0) {
       get().setActiveThread(userThreads[0].id);
@@ -167,7 +199,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const currentUser = get().userContext;
     if (currentUser?.uid === userContext?.uid) return;
     
-    console.log(`🔄 Setting user context: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Setting user context', undefined, {
+      previousUserId: currentUser?.uid,
+      newUserId: userContext?.uid,
+      isUserChange: currentUser?.uid !== userContext?.uid
+    });
     
     // Clear current data when user changes
     if (currentUser?.uid !== userContext?.uid) {
@@ -214,7 +250,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Save to localStorage with user context
     saveThreadsToStorage(state.defaultAssistantId, newThreads, userContext?.uid);
     
-    console.log(`➕ Added thread ${thread.id} for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Thread added successfully', undefined, {
+      userId: userContext?.uid,
+      threadId: thread.id,
+      threadTitle: thread.title,
+      totalThreads: newThreads.length
+    });
   },
 
   updateThread: (threadId: string, updates: Partial<Thread>) => {
@@ -232,7 +273,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ threads: updatedThreads });
     saveThreadsToStorage(state.defaultAssistantId, updatedThreads, userContext?.uid);
     
-    console.log(`✏️ Updated thread ${threadId} for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Thread updated successfully', undefined, {
+      userId: userContext?.uid,
+      threadId: threadId,
+      updates: Object.keys(updates)
+    });
   },
 
   deleteThread: (threadId: string) => {
@@ -242,7 +287,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Only allow deletion of user's own threads
     const threadToDelete = state.threads.find(t => t.id === threadId);
     if (threadToDelete && threadToDelete.userId && threadToDelete.userId !== userContext?.uid) {
-      console.warn(`⚠️ User ${userContext?.uid} attempted to delete thread ${threadId} belonging to ${threadToDelete.userId}`);
+      logger.warn('User attempted to delete thread belonging to another user', undefined, {
+        userId: userContext?.uid,
+        threadId: threadId,
+        threadOwnerId: threadToDelete.userId
+      });
       return;
     }
     
@@ -260,7 +309,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Save to localStorage
     saveThreadsToStorage(state.defaultAssistantId, newThreads, userContext?.uid);
     
-    console.log(`🗑️ Deleted thread ${threadId} for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Thread deleted successfully', undefined, {
+      userId: userContext?.uid,
+      threadId: threadId,
+      remainingThreads: newThreads.length,
+      newActiveThread: state.activeThreadId === threadId ? 
+        (newThreads.length > 0 ? newThreads[0].id : null) : state.activeThreadId
+    });
   },
 
   createNewThread: async (title?: string): Promise<string> => {
@@ -311,7 +366,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       return realThreadId;
       
     } catch (error) {
-      console.error('Error creating new thread:', error);
+      logger.error('Error creating new thread', error, undefined, {
+        userId: get().userContext?.uid,
+        assistantId: get().defaultAssistantId,
+        title: title
+      });
       set({ error: error instanceof Error ? error.message : 'Failed to create thread' });
       throw error;
     } finally {
@@ -349,7 +408,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
     }
     
-    console.log(`💬 Added ${message.sender} message to thread ${threadId} for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Message added to thread', undefined, {
+      userId: userContext?.uid,
+      threadId: threadId,
+      messageSender: message.sender,
+      messageLength: message.text.length,
+      totalMessages: updatedMessagesByThread[threadId].length
+    });
   },
 
   getMessagesForThread: (threadId: string) => {
@@ -406,7 +471,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       
       set({ messagesByThread: updatedMessagesByThread });
       
-      console.log(`📥 Loaded ${messages.length} messages for thread ${threadId}, user: ${userContext?.uid || 'anonymous'}`);
+      logger.info('Messages loaded for thread', undefined, {
+        userId: userContext?.uid,
+        threadId: threadId,
+        messagesCount: messages.length
+      });
       
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to load messages' });
@@ -506,7 +575,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         get().addMessage(targetThreadId, assistantMessage);
       }
 
-      console.log(`📤 Message sent successfully for user: ${userContext?.uid || 'anonymous'}`);
+      logger.info('Message sent successfully', undefined, {
+        userId: userContext?.uid,
+        targetThreadId: targetThreadId,
+        hasAssistantResponse: !!assistantResponse
+      });
 
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to send message' });
@@ -546,11 +619,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       
       const result = await response.json();
       const userContext = get().userContext;
-      console.log(`✅ Feedback submitted successfully for user: ${userContext?.uid || 'anonymous'}`, result);
+      logger.info('Feedback submitted successfully', undefined, {
+        userId: userContext?.uid,
+        runId: runId,
+        rating: rating,
+        hasComment: !!comment,
+        success: result.success
+      });
       return result;
       
     } catch (error) {
-      console.error('❌ Error submitting feedback:', error);
+      logger.error('Error submitting feedback', error, undefined, {
+        userId: get().userContext?.uid,
+        runId: runId,
+        rating: rating
+      });
       throw error;
     }
   },
@@ -581,7 +664,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // Clear localStorage for current user
     saveThreadsToStorage(state.defaultAssistantId, [], userContext?.uid);
     
-    console.log(`🧹 Cleared chat data for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Chat data cleared', undefined, {
+      userId: userContext?.uid,
+      clearedThreads: state.threads.length,
+      clearedMessages: Object.keys(state.messagesByThread).length
+    });
   },
 
   syncWithLocalStorage: () => {

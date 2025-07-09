@@ -21,6 +21,13 @@ import { Button } from "@/app/components/tiptap/tiptap-ui-primitive/button"
 // --- Styles ---
 import "@/app/components/tiptap/tiptap-ui/color-highlight-button/color-highlight-button.scss"
 
+// --- Logger ---
+import { Logger } from "@/app/lib/utils/logger"
+
+const logger = Logger.getInstance().withContext({
+  component: 'color-highlight-button'
+});
+
 export const HIGHLIGHT_COLORS = [
   {
     label: "רקע ברירת מחדל",
@@ -164,7 +171,12 @@ export function toggleHighlight(
 
     editor.chain().setMeta("hideDragHandle", true).run()
   } catch (error) {
-    console.error("Failed to apply highlight:", error)
+    logger.error("Failed to apply highlight", error, undefined, {
+      action: 'toggle-highlight',
+      color: color,
+      hasNode: !!node,
+      nodePos: nodePos
+    });
   }
 }
 

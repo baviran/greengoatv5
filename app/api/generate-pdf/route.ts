@@ -3,11 +3,16 @@ import { pdfService } from '@/app/lib/pdf/pdf-service'
 import { PDF_CONFIG, PDFGenerationRequest } from '@/app/lib/pdf/pdf-config'
 import { Logger } from '@/app/lib/utils/logger'
 import { withAuth } from '@/lib/auth-middleware'
-import { DecodedIdToken } from 'firebase-admin/auth'
 
 const logger = Logger.getInstance()
 
-const authenticatedPOST = withAuth(async (req: NextRequest, user: DecodedIdToken) => {
+const authenticatedPOST = withAuth(async (req: NextRequest, authResult) => {
+  const { user } = authResult;
+  
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+  }
+  
   try {
     logger.info(`PDF generation request from user: ${user.uid} (${user.email})`);
     
@@ -21,7 +26,7 @@ const authenticatedPOST = withAuth(async (req: NextRequest, user: DecodedIdToken
       )
     }
 
-    logger.info('Generating PDF from HTML content', { 
+    logger.info('Generating PDF from HTML content', undefined, { 
       hasCustomStyles: !!styles,
       theme,
       userId: user.uid
@@ -42,7 +47,7 @@ const authenticatedPOST = withAuth(async (req: NextRequest, user: DecodedIdToken
     })
 
   } catch (error) {
-    logger.error('PDF generation failed:', error, { userId: user.uid })
+    logger.error('PDF generation failed:', error, undefined, { userId: user.uid })
     
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate PDF'
     

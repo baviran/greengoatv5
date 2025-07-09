@@ -1,7 +1,12 @@
-import type { Attrs, Node } from "@tiptap/pm/model"
-import type { Editor } from "@tiptap/react"
+import { Editor } from "@tiptap/react"
+import { Node, type Attrs } from "@tiptap/pm/model"
+import { Logger } from "@/app/lib/utils/logger"
 
-export const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+const logger = Logger.getInstance().withContext({
+  component: 'tiptap-utils'
+});
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 /**
  * Checks if a mark exists in the editor schema
@@ -102,7 +107,7 @@ export function findNodePosition(props: {
         return { pos: nodePos!, node: nodeAtPos }
       }
     } catch (error) {
-      console.error("Error checking node at position:", error)
+      logger.error("Error checking node at position:", error)
       return null
     }
   }

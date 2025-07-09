@@ -1,0 +1,234 @@
+# Cursor Rules for GreenGoat v5
+
+## 🔴 Critical Rules
+
+### Logging Standards
+- **Never use console.log, console.error, console.warn, or console.debug**
+- **Always use Logger.getInstance() for logging**
+- **Include context object with userId, requestId, component, action when available**
+- **Use appropriate log levels:**
+  - `debug` for development debugging
+  - `info` for business logic and normal flow
+  - `warn` for recoverable issues
+  - `error` for exceptions and failures
+
+### Logging Context Requirements
+```typescript
+// ✅ Good - with context
+const logger = Logger.getInstance();
+const context = {
+  userId: user.uid,
+  requestId: req.headers.get('x-request-id'),
+  component: 'user-service',
+  action: 'create-user'
+};
+logger.info('User created successfully', context, { email: user.email });
+
+// ❌ Bad - without context
+console.log('User created successfully');
+```
+
+### Error Logging
+```typescript
+// ✅ Good - structured error logging
+try {
+  // ... code
+} catch (error) {
+  logger.error('User creation failed', error, context, {
+    email: userData.email,
+    attemptedRole: userData.role
+  });
+}
+
+// ❌ Bad - console error
+catch (error) {
+  console.error('User creation failed:', error);
+}
+```
+
+### Security Rules
+- **Never log sensitive data (passwords, tokens, personal info)**
+- **Sanitize user input before logging**
+- **Use structured logging format: timestamp, level, message, context**
+
+### Performance Rules
+- **Use async logging in production environment**
+- **Include request tracing with unique request IDs**
+- **Log request start/end with duration for API calls**
+
+## 🟡 API Route Rules
+
+### Authentication Context
+```typescript
+// ✅ Use enhanced auth middleware
+export const POST = withAuth(async (req, authResult) => {
+  const { user, context } = authResult;
+  const logger = Logger.getInstance().withContext(context);
+  
+  logger.info('API request started', { endpoint: '/api/users' });
+  // ... handler code
+});
+```
+
+### Request Logging
+```typescript
+// ✅ Log request lifecycle
+export const POST = withRequestContext(async (req, context) => {
+  const logger = Logger.getInstance().withContext(context);
+  
+  logger.requestStart('Processing user request');
+  const startTime = Date.now();
+  
+  try {
+    // ... processing
+    logger.requestEnd('User request completed', startTime);
+  } catch (error) {
+    logger.error('User request failed', error);
+    throw error;
+  }
+});
+```
+
+## 🟢 Service Layer Rules
+
+### Service Logging
+```typescript
+// ✅ Component-specific logging
+export class UserService {
+  private logger = Logger.getInstance().withContext({
+    component: 'user-service'
+  });
+  
+  async createUser(userData: CreateUserData, context?: LogContext) {
+    const mergedContext = { ...context, action: 'create-user' };
+    
+    this.logger.info('Starting user creation', mergedContext, {
+      email: userData.email
+    });
+    
+    try {
+      // ... implementation
+      this.logger.info('User created successfully', mergedContext, {
+        userId: newUser.id
+      });
+    } catch (error) {
+      this.logger.error('User creation failed', error, mergedContext);
+      throw error;
+    }
+  }
+}
+```
+
+## 🔵 Client-Side Rules
+
+### Client-Side Logging
+```typescript
+// ✅ Client-side structured logging
+const logger = Logger.getInstance();
+
+// For user interactions
+logger.info('User interaction', {
+  component: 'chat-interface',
+  action: 'message-sent',
+  userId: user?.uid
+});
+
+// For errors
+logger.error('Client error occurred', error, {
+  component: 'chat-interface',
+  action: 'message-failed',
+  userId: user?.uid
+});
+```
+
+## 🟣 Migration Rules
+
+### Console.log Replacement
+```typescript
+// ❌ Replace these patterns
+console.log('User authenticated:', user.uid);
+console.error('Auth failed:', error);
+console.warn('Rate limit exceeded');
+
+// ✅ With these patterns
+logger.info('User authenticated', { userId: user.uid, component: 'auth' });
+logger.error('Authentication failed', error, { component: 'auth' });
+logger.warn('Rate limit exceeded', { component: 'rate-limiter' });
+```
+
+### Backward Compatibility
+- When migrating existing code, maintain original functionality
+- Add context progressively - start with component, then add action/userId
+- Use `Logger.getInstance().withContext()` for consistent context
+
+## 🔍 Code Review Checklist
+
+Before submitting code:
+- [ ] No console.log/error/warn/debug statements
+- [ ] All logging uses Logger.getInstance()
+- [ ] Context objects include relevant information
+- [ ] Error logging includes error object and context
+- [ ] No sensitive data in logs
+- [ ] Appropriate log levels used
+- [ ] Request tracing implemented for API routes
+- [ ] Component and action specified in context
+
+## 🚀 Performance Guidelines
+
+### Production Logging
+- Use async logging for better performance
+- Include request tracing for monitoring
+- Log structured data for better parsing
+- Use appropriate log levels to reduce noise
+
+### Development Logging
+- Use debug level for detailed debugging
+- Include stack traces for errors
+- Use pretty printing for better readability
+- Log component boundaries for flow tracking
+
+## 📋 Examples
+
+### Complete API Route Example
+```typescript
+import { withAuth } from '@/lib/auth-middleware';
+import { Logger } from '@/app/lib/utils/logger';
+
+export const POST = withAuth(async (req, authResult) => {
+  const { user, context } = authResult;
+  const logger = Logger.getInstance().withContext({
+    ...context,
+    component: 'user-api',
+    action: 'update-profile'
+  });
+  
+  logger.requestStart('Profile update request');
+  
+  try {
+    const userData = await req.json();
+    
+    logger.info('Updating user profile', {
+      userId: user.uid,
+      fields: Object.keys(userData)
+    });
+    
+    const updatedUser = await userService.updateUser(user.email, userData);
+    
+    logger.info('Profile updated successfully', {
+      userId: user.uid
+    });
+    
+    return NextResponse.json({ user: updatedUser });
+    
+  } catch (error) {
+    logger.error('Profile update failed', error, {
+      userId: user.uid
+    });
+    
+    return NextResponse.json(
+      { error: 'Profile update failed' },
+      { status: 500 }
+    );
+  }
+});
+``` 

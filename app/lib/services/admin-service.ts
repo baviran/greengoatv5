@@ -1,4 +1,5 @@
 import { UserCreateRequest, UserUpdateRequest } from '@/app/types/user';
+import { Logger } from '@/app/lib/utils/logger';
 
 interface AdminUser {
   email: string;
@@ -30,6 +31,10 @@ interface AdminApiOptions {
 }
 
 export class AdminService {
+  private logger = Logger.getInstance().withContext({
+    component: 'admin-service'
+  });
+
   private async makeAuthenticatedRequest(
     endpoint: string,
     options: RequestInit & { token?: string } = {}
@@ -168,20 +173,29 @@ export const adminService = new AdminService();
 
 // React hook for admin operations
 export function useAdminService() {
+  const logger = Logger.getInstance().withContext({
+    component: 'admin-service-hook'
+  });
+
   const makeRequest = async (operation: (token: string) => Promise<any>) => {
+    let user: any = null;
     try {
       // Get token from Firebase Auth
       const { auth } = await import('@/lib/firebase');
-      const user = auth.currentUser;
+      user = auth.currentUser;
       
       if (!user) {
+        logger.warn('User not authenticated for admin service');
         throw new Error('User not authenticated');
       }
 
       const token = await user.getIdToken(true);
       return await operation(token);
     } catch (error) {
-      console.error('Admin service error:', error);
+      logger.error('Admin service error', error, undefined, {
+        userId: user?.uid,
+        userEmail: user?.email
+      });
       throw error;
     }
   };

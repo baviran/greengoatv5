@@ -2,6 +2,11 @@ import React, {useEffect, useMemo, useRef} from 'react';
 import { Icon } from '@/app/components/icons';
 import {useAuthenticatedChatStore} from '../lib/store/chatStore';
 import FeedbackSection from './FeedbackSection';
+import { Logger } from '@/app/lib/utils/logger';
+
+const logger = Logger.getInstance().withContext({
+  component: 'message-list'
+});
 
 const MessageList: React.FC = () => {
     const { activeThreadId, messagesByThread, isLoading, isSending, submitFeedback } = useAuthenticatedChatStore();
@@ -19,14 +24,28 @@ const MessageList: React.FC = () => {
     const handleFeedbackSubmit = async (messageId: string, type: 'like' | 'dislike', feedback?: string) => {
         const message = messages.find(m => m.id === messageId);
         if (!message || !message.runId || !activeThreadId) {
-            console.error('❌ Cannot submit feedback: missing message, runId, or threadId');
+            logger.error('Cannot submit feedback - missing required data', undefined, undefined, {
+                messageId: messageId,
+                hasMessage: !!message,
+                hasRunId: !!message?.runId,
+                hasActiveThreadId: !!activeThreadId,
+                feedbackType: type,
+                action: 'validate-feedback-submission'
+            });
             return;
         }
         
         try {
             await submitFeedback(messageId, message.runId, activeThreadId, type, feedback);
         } catch (error) {
-            console.error('❌ Failed to submit feedback:', error);
+            logger.error('Failed to submit feedback', error, undefined, {
+                messageId: messageId,
+                runId: message.runId,
+                threadId: activeThreadId,
+                feedbackType: type,
+                hasFeedbackText: !!feedback,
+                action: 'submit-message-feedback'
+            });
             throw error;
         }
     };

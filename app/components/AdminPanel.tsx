@@ -2,6 +2,11 @@
 
 import React, { useState } from 'react';
 import { useAuthContext } from '@/context/auth-context';
+import { Logger } from '@/app/lib/utils/logger';
+
+const logger = Logger.getInstance().withContext({
+  component: 'admin-panel'
+});
 
 export const AdminPanel: React.FC = () => {
   const { user, getIdToken } = useAuthContext();
@@ -27,6 +32,13 @@ export const AdminPanel: React.FC = () => {
         return;
       }
 
+      logger.info('Creating user via admin panel', undefined, {
+        adminUserId: user?.uid,
+        targetEmail: email.trim(),
+        targetRole: role,
+        action: 'admin-create-user'
+      });
+
       const response = await fetch('/api/admin/users', {
         method: 'POST',
         headers: {
@@ -42,14 +54,33 @@ export const AdminPanel: React.FC = () => {
       const result = await response.json();
 
       if (response.ok) {
+        logger.info('User created successfully via admin panel', undefined, {
+          adminUserId: user?.uid,
+          createdEmail: result.email,
+          createdRole: result.role,
+          action: 'admin-user-created'
+        });
         setMessage(`✅ משתמש נוצר בהצלחה: ${result.email}`);
         setEmail('');
         setRole('user');
       } else {
+        logger.warn('User creation failed via admin panel', undefined, {
+          adminUserId: user?.uid,
+          targetEmail: email.trim(),
+          targetRole: role,
+          errorMessage: result.error,
+          statusCode: response.status,
+          action: 'admin-user-creation-failed'
+        });
         setMessage(`❌ שגיאה: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error creating user:', error);
+      logger.error('Error creating user via admin panel', error, undefined, {
+        adminUserId: user?.uid,
+        targetEmail: email.trim(),
+        targetRole: role,
+        action: 'admin-create-user-error'
+      });
       setMessage('❌ נכשל ביצירת משתמש');
     } finally {
       setLoading(false);
@@ -67,6 +98,11 @@ export const AdminPanel: React.FC = () => {
         return;
       }
 
+      logger.info('Starting user migration via admin panel', undefined, {
+        adminUserId: user?.uid,
+        action: 'admin-migrate-users'
+      });
+
       const response = await fetch('/api/admin/migrate-users', {
         method: 'POST',
         headers: {
@@ -78,12 +114,28 @@ export const AdminPanel: React.FC = () => {
       const result = await response.json();
 
       if (response.ok) {
+        logger.info('User migration completed via admin panel', undefined, {
+          adminUserId: user?.uid,
+          migratedCount: result.migrated,
+          skippedCount: result.skipped,
+          totalProcessed: result.migrated + result.skipped,
+          action: 'admin-migration-completed'
+        });
         setMessage(`✅ ${result.message} - הועברו ${result.migrated} משתמשים, דולגו ${result.skipped}`);
       } else {
+        logger.warn('User migration failed via admin panel', undefined, {
+          adminUserId: user?.uid,
+          errorMessage: result.error,
+          statusCode: response.status,
+          action: 'admin-migration-failed'
+        });
         setMessage(`❌ שגיאה במעבר: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error migrating users:', error);
+      logger.error('Error migrating users via admin panel', error, undefined, {
+        adminUserId: user?.uid,
+        action: 'admin-migrate-users-error'
+      });
       setMessage('❌ נכשל במעבר משתמשים');
     } finally {
       setMigrationLoading(false);

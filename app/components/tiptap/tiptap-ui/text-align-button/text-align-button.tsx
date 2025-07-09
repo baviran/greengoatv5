@@ -18,6 +18,13 @@ import {
 import type { ButtonProps } from "@/app/components/tiptap/tiptap-ui-primitive/button"
 import { Button } from "@/app/components/tiptap/tiptap-ui-primitive/button"
 
+// --- Logger ---
+import { Logger } from "@/app/lib/utils/logger"
+
+const logger = Logger.getInstance().withContext({
+  component: 'text-align-button'
+});
+
 export type TextAlign = "left" | "center" | "right" | "justify"
 
 export interface TextAlignButtonProps extends ButtonProps {
@@ -77,9 +84,14 @@ export function checkTextAlignExtension(editor: Editor | null): boolean {
   )
 
   if (!hasExtension) {
-    console.warn(
+    logger.warn(
       "TextAlign extension is not available. " +
-        "Make sure it is included in your editor configuration."
+        "Make sure it is included in your editor configuration.",
+      undefined,
+      {
+        action: 'check-text-align-extension',
+        extensionName: 'textAlign'
+      }
     )
   }
 

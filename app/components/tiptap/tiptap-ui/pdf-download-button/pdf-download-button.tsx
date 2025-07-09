@@ -21,6 +21,13 @@ import { Button } from "@/app/components/tiptap/tiptap-ui-primitive/button"
 import { getPDFExtensions } from "@/app/lib/tiptap/tiptap-extensions"
 import { PDF_CONFIG, PDFGenerationRequest } from "@/app/lib/pdf/pdf-config"
 
+// --- Logger ---
+import { Logger } from "@/app/lib/utils/logger"
+
+const logger = Logger.getInstance().withContext({
+  component: 'pdf-download-button'
+});
+
 export interface PDFDownloadButtonProps extends Omit<ButtonProps, "type"> {
   /**
    * The TipTap editor instance.
@@ -86,7 +93,10 @@ export function usePDFDownloadState(
       window.URL.revokeObjectURL(url)
       
     } catch (error) {
-      console.error('PDF download failed:', error)
+      logger.error('PDF download failed', error, undefined, {
+        action: 'pdf-download-error',
+        timestamp: new Date().toISOString()
+      });
       const errorMessage = error instanceof Error ? error.message : PDF_CONFIG.UI_TEXT.ERROR_MESSAGE
       alert(errorMessage)
     } finally {

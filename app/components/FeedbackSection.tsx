@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { Icon } from '@/app/components/icons';
+import { Logger } from '@/app/lib/utils/logger';
+
+const logger = Logger.getInstance().withContext({
+  component: 'feedback-section'
+});
 
 interface FeedbackSectionProps {
     messageId: string;
@@ -32,7 +37,12 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ messageId, onFeedback
             setShowFeedbackText(false);
             setFeedbackText('');
         } catch (error) {
-            console.error('Error submitting feedback:', error);
+            logger.error('Error submitting feedback', error, undefined, {
+                messageId: messageId,
+                feedbackType: 'dislike',
+                hasFeedbackText: !!feedbackText.trim(),
+                action: 'submit-negative-feedback'
+            });
         } finally {
             setIsSubmitting(false);
         }

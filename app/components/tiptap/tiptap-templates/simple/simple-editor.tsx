@@ -62,12 +62,21 @@ import { useCursorVisibility } from "@/app/hooks/tiptap/use-cursor-visibility"
 
 
 // --- Lib ---
-import { handleImageUpload, MAX_FILE_SIZE } from "@/app/lib/tiptap/tiptap-utils"
+import { handleImageUpload } from "@/app/lib/tiptap/tiptap-utils"
+
+// --- Logger ---
+import { Logger } from "@/app/lib/utils/logger"
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 // --- Styles ---
 import "@/app/components/tiptap/tiptap-templates/simple/simple-editor.scss"
 
 import content from "@/app/components/tiptap/tiptap-templates/simple/data/content.json"
+
+const logger = Logger.getInstance().withContext({
+  component: 'simple-editor'
+});
 
 const MainToolbarContent = ({
   onHighlighterClick,
@@ -185,7 +194,10 @@ export function SimpleEditor() {
         maxSize: MAX_FILE_SIZE,
         limit: 3,
         upload: handleImageUpload,
-        onError: (error) => console.error("Upload failed:", error),
+        onError: (error) => logger.error("Image upload failed", error, undefined, {
+          action: 'image-upload-error',
+          component: 'simple-editor'
+        }),
       }),
       TrailingNode,
     ],

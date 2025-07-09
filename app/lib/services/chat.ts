@@ -1,4 +1,9 @@
 import { UserContext } from '@/app/types/chat';
+import { Logger } from '@/app/lib/utils/logger';
+
+const logger = Logger.getInstance().withContext({
+  component: 'chat-service'
+});
 
 // Enhanced chat service with user context
 export async function sendMessageToAssistant(
@@ -28,7 +33,12 @@ export async function sendMessageToAssistant(
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    console.log(`📤 Sending message to assistant for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Sending message to assistant', undefined, {
+        userId: userContext?.uid,
+        threadId: threadId,
+        hasToken: !!token,
+        messageLength: message.length
+    });
 
     const res = await fetch('/api/chat', {
         method: 'POST',
@@ -39,17 +49,36 @@ export async function sendMessageToAssistant(
     if (!res.ok) {
         const err = await res.json();
         if (res.status === 401) {
+            logger.warn('Authentication required for chat', undefined, {
+                userId: userContext?.uid,
+                status: res.status
+            });
             throw new Error('אנא התחבר כדי להשתמש בשירות');
         }
         if (res.status === 403) {
+            logger.warn('User lacks permission for chat thread', undefined, {
+                userId: userContext?.uid,
+                threadId: threadId,
+                status: res.status
+            });
             throw new Error('אין לך הרשאה לגשת לשיחה זו');
         }
-        console.error(`❌ Chat API error for user ${userContext?.uid || 'anonymous'}:`, err);
+        logger.error('Chat API error', undefined, undefined, {
+            userId: userContext?.uid,
+            threadId: threadId,
+            status: res.status,
+            error: err
+        });
         throw new Error(err.error || 'שגיאה בתקשורת עם השרת');
     }
 
     const data = await res.json();
-    console.log(`✅ Message sent successfully for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Message sent successfully', undefined, {
+        userId: userContext?.uid,
+        threadId: data.threadId,
+        runId: data.runId,
+        hasResponse: !!data.response
+    });
     
     return {
         response: data.response || 'לא התקבלה תשובה מהעוזר.',
@@ -80,7 +109,13 @@ export async function sendFeedback(
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    console.log(`📝 Sending feedback for user: ${userContext?.uid || 'anonymous'}, runId: ${runId}`);
+    logger.info('Sending feedback', undefined, {
+        userId: userContext?.uid,
+        runId: runId,
+        rating: rating,
+        hasComment: !!comment,
+        hasToken: !!token
+    });
 
     const res = await fetch('/api/feedback', {
         method: 'POST',
@@ -91,17 +126,37 @@ export async function sendFeedback(
     if (!res.ok) {
         const err = await res.json();
         if (res.status === 401) {
+            logger.warn('Authentication required for feedback', undefined, {
+                userId: userContext?.uid,
+                runId: runId,
+                status: res.status
+            });
             throw new Error('אנא התחבר כדי לשלוח משוב');
         }
         if (res.status === 403) {
+            logger.warn('User lacks permission for feedback', undefined, {
+                userId: userContext?.uid,
+                runId: runId,
+                status: res.status
+            });
             throw new Error('אין לך הרשאה לשלוח משוב על הודעה זו');
         }
-        console.error(`❌ Feedback API error for user ${userContext?.uid || 'anonymous'}:`, err);
+        logger.error('Feedback API error', undefined, undefined, {
+            userId: userContext?.uid,
+            runId: runId,
+            status: res.status,
+            error: err
+        });
         throw new Error(err.error || 'שגיאה בשליחת המשוב');
     }
 
     const result = await res.json();
-    console.log(`✅ Feedback sent successfully for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Feedback sent successfully', undefined, {
+        userId: userContext?.uid,
+        runId: runId,
+        rating: rating,
+        success: result.success
+    });
     
     return result;
 }
@@ -119,7 +174,10 @@ export async function getUserThreads(
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    console.log(`📂 Fetching threads for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Fetching threads for user', undefined, {
+        userId: userContext?.uid,
+        hasToken: !!token
+    });
 
     const res = await fetch('/api/threads', {
         method: 'GET',
@@ -129,14 +187,25 @@ export async function getUserThreads(
     if (!res.ok) {
         const err = await res.json();
         if (res.status === 401) {
+            logger.warn('Authentication required for threads', undefined, {
+                userId: userContext?.uid,
+                status: res.status
+            });
             throw new Error('אנא התחבר כדי לטעון שיחות');
         }
-        console.error(`❌ Threads API error for user ${userContext?.uid || 'anonymous'}:`, err);
+        logger.error('Threads API error', undefined, undefined, {
+            userId: userContext?.uid,
+            status: res.status,
+            error: err
+        });
         throw new Error(err.error || 'שגיאה בטעינת השיחות');
     }
 
     const data = await res.json();
-    console.log(`✅ Loaded ${data.threads?.length || 0} threads for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Threads loaded successfully', undefined, {
+        userId: userContext?.uid,
+        threadsCount: data.threads?.length || 0
+    });
     
     return data.threads || [];
 }
@@ -155,7 +224,11 @@ export async function getUserMessages(
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    console.log(`📥 Fetching messages for thread: ${threadId}, user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Fetching messages for thread', undefined, {
+        userId: userContext?.uid,
+        threadId: threadId,
+        hasToken: !!token
+    });
 
     const res = await fetch(`/api/threads/${threadId}/messages`, {
         method: 'GET',
@@ -165,17 +238,36 @@ export async function getUserMessages(
     if (!res.ok) {
         const err = await res.json();
         if (res.status === 401) {
+            logger.warn('Authentication required for messages', undefined, {
+                userId: userContext?.uid,
+                threadId: threadId,
+                status: res.status
+            });
             throw new Error('אנא התחבר כדי לטעון הודעות');
         }
         if (res.status === 403) {
+            logger.warn('User lacks permission for thread messages', undefined, {
+                userId: userContext?.uid,
+                threadId: threadId,
+                status: res.status
+            });
             throw new Error('אין לך הרשאה לגשת לשיחה זו');
         }
-        console.error(`❌ Messages API error for user ${userContext?.uid || 'anonymous'}:`, err);
+        logger.error('Messages API error', undefined, undefined, {
+            userId: userContext?.uid,
+            threadId: threadId,
+            status: res.status,
+            error: err
+        });
         throw new Error(err.error || 'שגיאה בטעינת ההודעות');
     }
 
     const data = await res.json();
-    console.log(`✅ Loaded ${data.messages?.length || 0} messages for user: ${userContext?.uid || 'anonymous'}`);
+    logger.info('Messages loaded successfully', undefined, {
+        userId: userContext?.uid,
+        threadId: threadId,
+        messagesCount: data.messages?.length || 0
+    });
     
     return data.messages || [];
 }

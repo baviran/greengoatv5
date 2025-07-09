@@ -1,35 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOpenAIService } from '@/app/lib/services/openai';
 import { withAuth } from '@/lib/auth-middleware';
-import { DecodedIdToken } from 'firebase-admin/auth';
+import { Logger } from '@/app/lib/utils/logger';
 
-const authenticatedGET = withAuth(async (
+export const GET = withAuth(async (
     request: NextRequest,
-    user: DecodedIdToken,
+    authResult,
     context: any
 ) => {
+  const { context: authContext } = authResult;
+  const logger = Logger.getInstance().withContext({
+    ...authContext,
+    component: 'messages-api',
+    action: 'fetch-messages'
+  });
+
   try {
-    console.log(`📥 Messages request for user: ${user.uid} (${user.email})`);
+    logger.info('Messages request received');
     
     const params = await context.params;
     const { threadId } = params;
     if (!threadId || typeof threadId !== 'string') {
+      logger.warn('Invalid thread ID provided', undefined, {
+        threadId,
+        threadIdType: typeof threadId
+      });
       return NextResponse.json(
           { error: 'Thread ID is required and must be a string' },
           { status: 400 }
       );
     }
 
-    console.log(`🔍 Fetching messages from thread: ${threadId} for user: ${user.uid}`);
+    logger.info('Fetching messages from thread', undefined, {
+      threadId
+    });
     
     const messages = await getOpenAIService().fetchMessagesByThreadId(threadId);
     
-    console.log(`✅ Successfully fetched ${messages.length} messages for user: ${user.uid}`);
+    logger.info('Successfully fetched messages', undefined, {
+      threadId,
+      messageCount: messages.length
+    });
     
     return NextResponse.json({ messages });
 
   } catch (error) {
-    console.error('Error fetching messages:', error);
+    logger.error('Error fetching messages', error, undefined, {
+      threadId: (await context.params)?.threadId
+    });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
         {
@@ -40,5 +58,3 @@ const authenticatedGET = withAuth(async (
     );
   }
 });
-
-export { authenticatedGET as GET };

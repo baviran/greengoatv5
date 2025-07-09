@@ -1,28 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuthAndUser } from '@/lib/auth-middleware';
-import { DecodedIdToken } from 'firebase-admin/auth';
-import { User } from '@/app/types/user';
+import { withAuth } from '@/lib/auth-middleware';
+import { Logger } from '@/app/lib/utils/logger';
 
-const authenticatedGET = withAuthAndUser(async (request: NextRequest, firebaseUser: DecodedIdToken, firestoreUser: User) => {
+export const GET = withAuth(async (request: NextRequest, authResult) => {
+  const { user, context } = authResult;
+  
+  // Type guard: user should always be defined when auth is successful
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+  }
+  
+  const logger = Logger.getInstance().withContext({
+    ...context,
+    component: 'user-validate-api',
+    action: 'validate-user'
+  });
+
   try {
+    logger.info('User validation request processed successfully');
+    
     // If we reach here, the user is authenticated and validated
     return NextResponse.json({
       success: true,
       user: {
-        uid: firebaseUser.uid,
-        email: firestoreUser.email,
-        displayName: firebaseUser.name || firebaseUser.email,
-        role: firestoreUser.role,
+        uid: user.uid,
+        email: user.email,
+        displayName: user.email, // Use email as display name
+        role: user.isAdmin ? 'admin' : 'user',
         status: 'active' // All users in the system are active
       }
     });
   } catch (error) {
-    console.error('❌ Error in user validation:', error);
+    logger.error('Error in user validation', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
-});
-
-export { authenticatedGET as GET }; 
+}); 

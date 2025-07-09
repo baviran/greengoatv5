@@ -3,7 +3,6 @@ import { getClauseData } from '@/app/lib/services/assistant';
 import { Logger } from '@/app/lib/utils/logger';
 import { feedbackCache } from '@/app/lib/services/feedbackCache';
 import { withAuth } from '@/lib/auth-middleware';
-import { DecodedIdToken } from 'firebase-admin/auth';
 
 import {
     AssistantRun,
@@ -157,17 +156,34 @@ async function processRun(
     return null;
 }
 
-const authenticatedPOST = withAuth(async (req: NextRequest, user: DecodedIdToken) => {
-    console.log(`🚀 AUTHENTICATED CHAT ENDPOINT CALLED - User: ${user.uid} (${user.email})`);
-    logger.info(`Processing chat request for user: ${user.uid} with email: ${user.email}`);
+export const POST = withAuth(async (req: NextRequest, authResult) => {
+    const { user } = authResult;
+    
+    // Type guard: user should always be defined when auth is successful
+    if (!user) {
+        return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+    }
+    logger.info('Chat endpoint called', undefined, {
+        userId: user.uid,
+        userEmail: user.email,
+        component: 'chat-api',
+        action: 'process-message'
+    });
     
     try {
-        console.log(`🔧 Initializing OpenAI service...`);
+        logger.debug('Initializing OpenAI service');
         openai = OpenAIService.getInstance();
         const body = await req.json();
         const { message, threadId: existingThreadId, assistantId } = body;
 
-        console.log(`📥 Parsed request - message: "${message}", threadId: ${existingThreadId}, assistantId: ${assistantId}, user: ${user.uid}`);
+        logger.info('Parsed chat request', undefined, {
+            userId: user.uid,
+            messageLength: message?.length,
+            threadId: existingThreadId,
+            assistantId: assistantId,
+            hasMessage: !!message,
+            hasAssistantId: !!assistantId
+        });
 
         if (!message) {
             return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -176,19 +192,32 @@ const authenticatedPOST = withAuth(async (req: NextRequest, user: DecodedIdToken
             return NextResponse.json({ error: 'Assistant ID is required' }, { status: 400 });
         }
 
-        logger.info(`Received message: "${message}", Thread ID: ${existingThreadId}, Assistant ID: ${assistantId}, User: ${user.uid}`);
+        logger.info('Starting message processing', undefined, {
+            userId: user.uid,
+            messagePreview: message.substring(0, 100),
+            threadId: existingThreadId,
+            assistantId: assistantId
+        });
 
-        console.log(`🔄 Starting message processing...`);
         const threadId = await getOrCreateThread(existingThreadId, user.uid);
         await openai.sendMessageToThread(threadId, message);
         logger.info(`Added message to thread ${threadId} for user ${user.uid}`);
         const initialRun = await openai.runAssistantOnThread(threadId, assistantId);
         logger.info(`Created initial run ${initialRun.id} for thread ${threadId} (user: ${user.uid})`);
 
-        console.log(`⚡ Processing run ${initialRun.id}...`);
+        logger.info('Processing run', undefined, {
+            userId: user.uid,
+            runId: initialRun.id,
+            threadId: threadId
+        });
         const assistantResponse = await processRun(threadId, initialRun.id) || '';
         
-        console.log(`🎯 Run completed, about to cache data for runId: ${initialRun.id}`);
+        logger.info('Run completed, caching interaction data', undefined, {
+            userId: user.uid,
+            runId: initialRun.id,
+            threadId: threadId,
+            responseLength: assistantResponse.length
+        });
         
         // Save complete interaction data to cache with user context
         const interactionData = {
@@ -206,7 +235,12 @@ const authenticatedPOST = withAuth(async (req: NextRequest, user: DecodedIdToken
         // Cache the interaction
         feedbackCache.set(initialRun.id, interactionData);
         
-        logger.info(`Successfully processed chat request for user ${user.uid}`);
+        logger.info('Chat request processed successfully', undefined, {
+            userId: user.uid,
+            runId: initialRun.id,
+            threadId: threadId,
+            responseLength: assistantResponse.length
+        });
         
         return NextResponse.json({
             response: assistantResponse,
@@ -215,8 +249,10 @@ const authenticatedPOST = withAuth(async (req: NextRequest, user: DecodedIdToken
         });
         
     } catch (error) {
-        logger.error(`Chat API error for user ${user.uid}:`, error);
-        console.error(`❌ Chat API error for user ${user.uid}:`, error);
+        logger.error('Chat API error', error, undefined, {
+            userId: user.uid,
+            userEmail: user.email
+        });
         
         return NextResponse.json(
             { error: 'Internal server error' },
@@ -224,5 +260,3 @@ const authenticatedPOST = withAuth(async (req: NextRequest, user: DecodedIdToken
         );
     }
 });
-
-export { authenticatedPOST as POST };

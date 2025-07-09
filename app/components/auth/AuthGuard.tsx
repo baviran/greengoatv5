@@ -3,6 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthContext } from '@/context/auth-context';
 import { SignInButton } from './SignInButton';
+import { Logger } from '@/app/lib/utils/logger';
+
+const logger = Logger.getInstance().withContext({
+  component: 'auth-guard'
+});
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -57,7 +62,11 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
           setValidationError('Failed to validate user access');
         }
       } catch (error) {
-        console.error('User validation error:', error);
+        logger.error('User validation error', error, undefined, {
+          userId: user?.uid,
+          userEmail: user?.email,
+          action: 'validate-user-access'
+        });
         setUserValidationStatus('error');
         setValidationError('Failed to validate user access');
       }
@@ -74,7 +83,11 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
     try {
       await signOut();
     } catch (error) {
-      console.error('Error signing out:', error);
+      logger.error('Error signing out', error, undefined, {
+        userId: user?.uid,
+        userEmail: user?.email,
+        action: 'sign-out'
+      });
     }
   };
 
