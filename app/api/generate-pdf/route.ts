@@ -2,60 +2,59 @@ import { NextRequest, NextResponse } from 'next/server'
 import { pdfService } from '@/app/lib/pdf/pdf-service'
 import { PDF_CONFIG, PDFGenerationRequest } from '@/app/lib/pdf/pdf-config'
 import { Logger } from '@/app/lib/utils/logger'
-import { withAuth } from '@/lib/auth-middleware'
+import { withApiResponse, createApiResponse, AuthResultWithContext } from '@/app/lib/utils/response-middleware'
+import { ApiResponseBuilder, HTTP_STATUS } from '@/app/lib/utils/api-response'
 
 const logger = Logger.getInstance()
 
-const authenticatedPOST = withAuth(async (req: NextRequest, authResult) => {
-  const { user } = authResult;
-  
-  if (!user) {
-    return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
-  }
-  
-  try {
-    logger.info(`PDF generation request from user: ${user.uid} (${user.email})`);
+const authenticatedPOST = withApiResponse('generate-pdf-api', 'generate-pdf')(
+  async (req: NextRequest, authResult: AuthResultWithContext) => {
+    const { user, context } = authResult;
     
-    const body: PDFGenerationRequest = await req.json()
-    const { html, options, filename, styles, theme } = body
-
-    if (!html) {
-      return NextResponse.json(
-        { error: 'HTML content is required' },
-        { status: 400 }
-      )
+    if (!user) {
+      const errorResponse = ApiResponseBuilder.unauthorized('Authentication failed', context);
+      return createApiResponse(errorResponse, HTTP_STATUS.UNAUTHORIZED);
     }
-
-    logger.info('Generating PDF from HTML content', undefined, { 
-      hasCustomStyles: !!styles,
-      theme,
-      userId: user.uid
-    })
-
-    const pdfBuffer = await pdfService.generatePDF(html, options, 'PDF', styles)
-    const downloadFilename = filename || 'tiptap-export.pdf'
-
-    logger.info(`PDF generated successfully for user: ${user.uid}, filename: ${downloadFilename}`);
-
-    return new NextResponse(pdfBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': PDF_CONFIG.CONTENT_TYPE,
-        'Content-Disposition': `attachment; filename="${downloadFilename}"`,
-        'Content-Length': pdfBuffer.length.toString(),
-      },
-    })
-
-  } catch (error) {
-    logger.error('PDF generation failed:', error, undefined, { userId: user.uid })
     
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate PDF'
-    
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+    try {
+      logger.info(`PDF generation request from user: ${user.uid} (${user.email})`, context);
+      
+      const body: PDFGenerationRequest = await req.json()
+      const { html, options, filename, styles, theme } = body
+
+      if (!html) {
+        const errorResponse = ApiResponseBuilder.validationError('HTML content is required', context, 'html');
+        return createApiResponse(errorResponse, HTTP_STATUS.BAD_REQUEST);
+      }
+
+      logger.info('Generating PDF from HTML content', context, { 
+        hasCustomStyles: !!styles,
+        theme,
+        userId: user.uid
+      })
+
+      const pdfBuffer = await pdfService.generatePDF(html, options, 'PDF', styles)
+      const downloadFilename = filename || 'tiptap-export.pdf'
+
+      logger.info(`PDF generated successfully for user: ${user.uid}, filename: ${downloadFilename}`, context);
+
+      // For binary file responses, we return the buffer directly (not using unified response format)
+      return new NextResponse(pdfBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': PDF_CONFIG.CONTENT_TYPE,
+          'Content-Disposition': `attachment; filename="${downloadFilename}"`,
+          'Content-Length': pdfBuffer.length.toString(),
+        },
+      })
+
+    } catch (error) {
+      logger.error('PDF generation failed:', error, context, { userId: user.uid })
+      
+      const errorResponse = ApiResponseBuilder.internalError('Failed to generate PDF', context);
+      return createApiResponse(errorResponse, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    }
   }
-});
+);
 
 export { authenticatedPOST as POST }

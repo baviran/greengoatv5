@@ -1,60 +1,58 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getOpenAIService } from '@/app/lib/services/openai';
-import { withAuth } from '@/lib/auth-middleware';
+import { withApiResponse, createApiResponse, AuthResultWithContext } from '@/app/lib/utils/response-middleware';
+import { ApiResponseBuilder, HTTP_STATUS } from '@/app/lib/utils/api-response';
 import { Logger } from '@/app/lib/utils/logger';
 
-export const GET = withAuth(async (
-    request: NextRequest,
-    authResult,
-    context: any
-) => {
-  const { context: authContext } = authResult;
-  const logger = Logger.getInstance().withContext({
-    ...authContext,
-    component: 'messages-api',
-    action: 'fetch-messages'
-  });
+export const GET = withApiResponse('messages-api', 'fetch-messages')(
+    async (request: NextRequest, authResult: AuthResultWithContext) => {
+        const { user, context: requestContext } = authResult;
+        const logger = Logger.getInstance();
 
-  try {
-    logger.info('Messages request received');
-    
-    const params = await context.params;
-    const { threadId } = params;
-    if (!threadId || typeof threadId !== 'string') {
-      logger.warn('Invalid thread ID provided', undefined, {
-        threadId,
-        threadIdType: typeof threadId
-      });
-      return NextResponse.json(
-          { error: 'Thread ID is required and must be a string' },
-          { status: 400 }
-      );
+        // Type guard: user should always be defined when auth is successful
+        if (!user) {
+            const errorResponse = ApiResponseBuilder.unauthorized('Authentication failed', requestContext);
+            return createApiResponse(errorResponse, HTTP_STATUS.UNAUTHORIZED);
+        }
+
+        try {
+            logger.info('Messages request received', requestContext);
+            
+            // Extract threadId from URL path
+            const url = new URL(request.url);
+            const pathParts = url.pathname.split('/');
+            const threadId = pathParts[pathParts.indexOf('threads') + 1];
+            
+            if (!threadId || typeof threadId !== 'string') {
+                logger.warn('Invalid thread ID provided', requestContext, {
+                    threadId,
+                    threadIdType: typeof threadId
+                });
+                const errorResponse = ApiResponseBuilder.validationError('Thread ID is required and must be a string', requestContext, 'threadId');
+                return createApiResponse(errorResponse, HTTP_STATUS.BAD_REQUEST);
+            }
+
+            logger.info('Fetching messages from thread', requestContext, {
+                threadId
+            });
+            
+            const messages = await getOpenAIService().fetchMessagesByThreadId(threadId);
+            
+            logger.info('Successfully fetched messages', requestContext, {
+                threadId,
+                messageCount: messages.length
+            });
+            
+            const responseData = { messages };
+            const successResponse = ApiResponseBuilder.success(responseData, requestContext);
+            return createApiResponse(successResponse, HTTP_STATUS.OK);
+
+        } catch (error) {
+            logger.error('Error fetching messages', error, requestContext, {
+                threadId: 'extraction-failed'
+            });
+            const errorResponse = ApiResponseBuilder.internalError('Failed to fetch messages', requestContext);
+            return createApiResponse(errorResponse, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        }
     }
-
-    logger.info('Fetching messages from thread', undefined, {
-      threadId
-    });
-    
-    const messages = await getOpenAIService().fetchMessagesByThreadId(threadId);
-    
-    logger.info('Successfully fetched messages', undefined, {
-      threadId,
-      messageCount: messages.length
-    });
-    
-    return NextResponse.json({ messages });
-
-  } catch (error) {
-    logger.error('Error fetching messages', error, undefined, {
-      threadId: (await context.params)?.threadId
-    });
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-        {
-          error: 'Failed to fetch messages',
-          details: errorMessage
-        },
-        { status: 500 }
-    );
-  }
-});
+);

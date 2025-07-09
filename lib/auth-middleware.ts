@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authAdmin } from './firebase-admin';
 import { Logger, LogContext } from '../app/lib/utils/logger';
 import { userService } from '../app/lib/services/user-service';
+import { ApiResponseBuilder, HTTP_STATUS, generateRequestId, createRequestContext as createApiRequestContext } from '../app/lib/utils/api-response';
 
 const logger = Logger.getInstance();
 
@@ -25,11 +26,6 @@ export interface AuthResult {
   };
   error?: string;
   context: RequestContext;
-}
-
-// Generate unique request ID
-function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // Create request context from NextRequest
@@ -158,10 +154,21 @@ export function withAuth<T extends any[]>(
         error: authResult.error
       });
       
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: 401 }
+      // Use unified response format
+      const apiContext = createApiRequestContext(
+        'auth-middleware',
+        'authenticate',
+        authResult.context.userId,
+        authResult.context.userEmail,
+        authResult.context.requestId
       );
+      
+      const errorResponse = ApiResponseBuilder.unauthorized(
+        authResult.error || 'Authentication failed',
+        apiContext
+      );
+      
+      return NextResponse.json(errorResponse, { status: HTTP_STATUS.UNAUTHORIZED });
     }
 
     try {
@@ -178,7 +185,22 @@ export function withAuth<T extends any[]>(
         authResult.context.startTime, authResult.context, {
         status: 500
       });
-      throw error;
+      
+      // Use unified response format for internal errors
+      const apiContext = createApiRequestContext(
+        'auth-middleware',
+        'handle-request',
+        authResult.context.userId,
+        authResult.context.userEmail,
+        authResult.context.requestId
+      );
+      
+      const errorResponse = ApiResponseBuilder.internalError(
+        'Internal server error',
+        apiContext
+      );
+      
+      return NextResponse.json(errorResponse, { status: HTTP_STATUS.INTERNAL_SERVER_ERROR });
     }
   };
 }

@@ -28,21 +28,19 @@ export class Logger {
     // Configure logger for Next.js server environment
     this.isProduction = process.env.NODE_ENV === 'production';
     
-    this.logger = pino({
-      level: this.isProduction ? 'info' : 'debug',
-      timestamp: pino.stdTimeFunctions.isoTime,
-      // In production, use structured JSON output for better parsing
-      transport: this.isProduction 
-        ? undefined 
-        : {
-            target: 'pino-pretty',
-            options: {
-              colorize: true,
-              translateTime: 'SYS:standard',
-              ignore: 'hostname,pid'
-            }
-          }
-    });
+    // In development, use simple console logging to avoid worker exit issues
+    if (!this.isProduction) {
+      this.logger = pino({
+        level: 'debug',
+        timestamp: pino.stdTimeFunctions.isoTime,
+        // No transport in development to avoid worker issues
+      });
+    } else {
+      this.logger = pino({
+        level: 'info',
+        timestamp: pino.stdTimeFunctions.isoTime
+      });
+    }
   }
 
   public static getInstance(): Logger {
@@ -59,9 +57,22 @@ export class Logger {
     
     if (this.isProduction) {
       // Async logging in production for better performance
-      setImmediate(() => this.logger.info(logData, message));
+      setImmediate(() => {
+        try {
+          this.logger.info(logData, message);
+        } catch {
+          // Ignore worker exit errors during development
+        }
+      });
     } else {
-      this.logger.info(logData, message);
+      // Use direct stdout in development to avoid worker exit issues
+      try {
+        const timestamp = new Date().toISOString();
+        const logString = `[${timestamp}] [INFO] ${message} ${JSON.stringify(logData)}\n`;
+        process.stdout.write(logString);
+      } catch {
+        // Silently ignore if stdout fails
+      }
     }
   }
 
@@ -82,9 +93,22 @@ export class Logger {
 
     if (this.isProduction) {
       // Async logging in production for better performance
-      setImmediate(() => this.logger.error(logData, message));
+      setImmediate(() => {
+        try {
+          this.logger.error(logData, message);
+        } catch {
+          // Ignore worker exit errors during development
+        }
+      });
     } else {
-      this.logger.error(logData, message);
+      // Use direct stderr in development to avoid worker exit issues
+      try {
+        const timestamp = new Date().toISOString();
+        const logString = `[${timestamp}] [ERROR] ${message} ${JSON.stringify(logData)}\n`;
+        process.stderr.write(logString);
+      } catch {
+        // Silently ignore if stderr fails
+      }
     }
   }
 
@@ -95,9 +119,22 @@ export class Logger {
     
     if (this.isProduction) {
       // Async logging in production for better performance
-      setImmediate(() => this.logger.warn(logData, message));
+      setImmediate(() => {
+        try {
+          this.logger.warn(logData, message);
+        } catch {
+          // Ignore worker exit errors during development
+        }
+      });
     } else {
-      this.logger.warn(logData, message);
+      // Use direct stdout in development to avoid worker exit issues
+      try {
+        const timestamp = new Date().toISOString();
+        const logString = `[${timestamp}] [WARN] ${message} ${JSON.stringify(logData)}\n`;
+        process.stdout.write(logString);
+      } catch {
+        // Silently ignore if stdout fails
+      }
     }
   }
 
@@ -108,9 +145,22 @@ export class Logger {
     
     if (this.isProduction) {
       // Async logging in production for better performance
-      setImmediate(() => this.logger.debug(logData, message));
+      setImmediate(() => {
+        try {
+          this.logger.debug(logData, message);
+        } catch {
+          // Ignore worker exit errors during development
+        }
+      });
     } else {
-      this.logger.debug(logData, message);
+      // Use direct stdout in development to avoid worker exit issues
+      try {
+        const timestamp = new Date().toISOString();
+        const logString = `[${timestamp}] [DEBUG] ${message} ${JSON.stringify(logData)}\n`;
+        process.stdout.write(logString);
+      } catch {
+        // Silently ignore if stdout fails
+      }
     }
   }
 

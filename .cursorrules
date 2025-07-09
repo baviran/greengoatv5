@@ -172,6 +172,10 @@ Before submitting code:
 - [ ] Appropriate log levels used
 - [ ] Request tracing implemented for API routes
 - [ ] Component and action specified in context
+- [ ] API responses use ApiResponseBuilder (never raw JSON)
+- [ ] HTTP status codes use HTTP_STATUS constants
+- [ ] Request context includes requestId and metadata
+- [ ] Error responses include structured error codes
 
 ## 🚀 Performance Guidelines
 
@@ -186,6 +190,75 @@ Before submitting code:
 - Include stack traces for errors
 - Use pretty printing for better readability
 - Log component boundaries for flow tracking
+
+## 🔵 API Response Standards
+
+### Response Format Rules
+- **Always use ApiResponseBuilder for all API responses**
+- **Never return raw JSON objects**
+- **Use HTTP_STATUS constants instead of numeric codes**
+- **Include request context in all responses**
+- **Use structured error codes from ERROR_CODES**
+
+### Success Response Pattern
+```typescript
+// ✅ Good - unified success response
+const successResponse = ApiResponseBuilder.success(userData, context);
+return createApiResponse(successResponse, HTTP_STATUS.OK);
+
+// ❌ Bad - raw JSON response
+return NextResponse.json({ success: true, data: userData });
+```
+
+### Error Response Pattern
+```typescript
+// ✅ Good - structured error response
+const errorResponse = ApiResponseBuilder.validationError(
+  'Email is required', 
+  context, 
+  'email'
+);
+return createApiResponse(errorResponse, HTTP_STATUS.BAD_REQUEST);
+
+// ❌ Bad - raw error response
+return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+```
+
+### Paginated Response Pattern
+```typescript
+// ✅ Good - structured pagination
+const pagination = createPaginationInfo(total, count, limit, offset);
+const response = ApiResponseBuilder.paginated(data, pagination, context);
+return createApiResponse(response, HTTP_STATUS.OK);
+
+// ❌ Bad - manual pagination structure
+return NextResponse.json({
+  data: data,
+  pagination: { total, count, limit, offset, hasMore }
+});
+```
+
+### Route Handler Pattern
+```typescript
+// ✅ Good - use withApiResponse middleware
+export const GET = withApiResponse('component-name', 'action-name')(
+  async (request: NextRequest, authResult: AuthResultWithContext) => {
+    const { user, context } = authResult;
+    
+    // Your logic here
+    const data = await getDataFromService();
+    
+    const response = ApiResponseBuilder.success(data, context);
+    return createApiResponse(response, HTTP_STATUS.OK);
+  }
+);
+
+// ❌ Bad - manual auth and response handling
+export const GET = withAuth(async (request: NextRequest, authResult) => {
+  // Manual response handling without unified format
+  return NextResponse.json({ data: result });
+});
+```
 
 ## 📋 Examples
 

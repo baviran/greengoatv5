@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getClauseData } from '@/app/lib/services/assistant';
 import { Logger } from '@/app/lib/utils/logger';
 import { feedbackCache } from '@/app/lib/services/feedbackCache';
-import { withAuth } from '@/lib/auth-middleware';
+import { withApiResponse, createApiResponse, AuthResultWithContext } from '@/app/lib/utils/response-middleware';
+import { ApiResponseBuilder, HTTP_STATUS } from '@/app/lib/utils/api-response';
 
 import {
     AssistantRun,
@@ -156,107 +157,113 @@ async function processRun(
     return null;
 }
 
-export const POST = withAuth(async (req: NextRequest, authResult) => {
-    const { user } = authResult;
-    
-    // Type guard: user should always be defined when auth is successful
-    if (!user) {
-        return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
-    }
-    logger.info('Chat endpoint called', undefined, {
-        userId: user.uid,
-        userEmail: user.email,
-        component: 'chat-api',
-        action: 'process-message'
-    });
-    
-    try {
-        logger.debug('Initializing OpenAI service');
-        openai = OpenAIService.getInstance();
-        const body = await req.json();
-        const { message, threadId: existingThreadId, assistantId } = body;
-
-        logger.info('Parsed chat request', undefined, {
-            userId: user.uid,
-            messageLength: message?.length,
-            threadId: existingThreadId,
-            assistantId: assistantId,
-            hasMessage: !!message,
-            hasAssistantId: !!assistantId
-        });
-
-        if (!message) {
-            return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+export const POST = withApiResponse('chat-api', 'process-message')(
+    async (req: NextRequest, authResult: AuthResultWithContext) => {
+        const { user, context } = authResult;
+        const logger = Logger.getInstance();
+        
+        // Type guard: user should always be defined when auth is successful
+        if (!user) {
+            const errorResponse = ApiResponseBuilder.unauthorized('Authentication failed', context);
+            return createApiResponse(errorResponse, HTTP_STATUS.UNAUTHORIZED);
         }
-        if (!assistantId) {
-            return NextResponse.json({ error: 'Assistant ID is required' }, { status: 400 });
-        }
-
-        logger.info('Starting message processing', undefined, {
-            userId: user.uid,
-            messagePreview: message.substring(0, 100),
-            threadId: existingThreadId,
-            assistantId: assistantId
-        });
-
-        const threadId = await getOrCreateThread(existingThreadId, user.uid);
-        await openai.sendMessageToThread(threadId, message);
-        logger.info(`Added message to thread ${threadId} for user ${user.uid}`);
-        const initialRun = await openai.runAssistantOnThread(threadId, assistantId);
-        logger.info(`Created initial run ${initialRun.id} for thread ${threadId} (user: ${user.uid})`);
-
-        logger.info('Processing run', undefined, {
-            userId: user.uid,
-            runId: initialRun.id,
-            threadId: threadId
-        });
-        const assistantResponse = await processRun(threadId, initialRun.id) || '';
         
-        logger.info('Run completed, caching interaction data', undefined, {
-            userId: user.uid,
-            runId: initialRun.id,
-            threadId: threadId,
-            responseLength: assistantResponse.length
-        });
-        
-        // Save complete interaction data to cache with user context
-        const interactionData = {
-            threadId,
-            runId: initialRun.id,
-            userId: user.uid,
-            userEmail: user.email,
-            userPrompt: message,
-            assistantResponse,
-            toolCalls,
-            toolOutputs,
-            timestamp: new Date().toISOString(),
-        };
-        
-        // Cache the interaction
-        feedbackCache.set(initialRun.id, interactionData);
-        
-        logger.info('Chat request processed successfully', undefined, {
-            userId: user.uid,
-            runId: initialRun.id,
-            threadId: threadId,
-            responseLength: assistantResponse.length
-        });
-        
-        return NextResponse.json({
-            response: assistantResponse,
-            threadId,
-            runId: initialRun.id,
-        });
-        
-    } catch (error) {
-        logger.error('Chat API error', error, undefined, {
+        logger.info('Chat endpoint called', context, {
             userId: user.uid,
             userEmail: user.email
         });
         
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        try {
+            logger.debug('Initializing OpenAI service');
+            openai = OpenAIService.getInstance();
+            const body = await req.json();
+            const { message, threadId: existingThreadId, assistantId } = body;
+
+            logger.info('Parsed chat request', context, {
+                userId: user.uid,
+                messageLength: message?.length,
+                threadId: existingThreadId,
+                assistantId: assistantId,
+                hasMessage: !!message,
+                hasAssistantId: !!assistantId
+            });
+
+            if (!message) {
+                const errorResponse = ApiResponseBuilder.validationError('Message is required', context, 'message');
+                return createApiResponse(errorResponse, HTTP_STATUS.BAD_REQUEST);
+            }
+            if (!assistantId) {
+                const errorResponse = ApiResponseBuilder.validationError('Assistant ID is required', context, 'assistantId');
+                return createApiResponse(errorResponse, HTTP_STATUS.BAD_REQUEST);
+            }
+
+            logger.info('Starting message processing', context, {
+                userId: user.uid,
+                messagePreview: message.substring(0, 100),
+                threadId: existingThreadId,
+                assistantId: assistantId
+            });
+
+            const threadId = await getOrCreateThread(existingThreadId, user.uid);
+            await openai.sendMessageToThread(threadId, message);
+            logger.info(`Added message to thread ${threadId} for user ${user.uid}`);
+            const initialRun = await openai.runAssistantOnThread(threadId, assistantId);
+            logger.info(`Created initial run ${initialRun.id} for thread ${threadId} (user: ${user.uid})`);
+
+            logger.info('Processing run', context, {
+                userId: user.uid,
+                runId: initialRun.id,
+                threadId: threadId
+            });
+            const assistantResponse = await processRun(threadId, initialRun.id) || '';
+            
+            logger.info('Run completed, caching interaction data', context, {
+                userId: user.uid,
+                runId: initialRun.id,
+                threadId: threadId,
+                responseLength: assistantResponse.length
+            });
+            
+            // Save complete interaction data to cache with user context
+            const interactionData = {
+                threadId,
+                runId: initialRun.id,
+                userId: user.uid,
+                userEmail: user.email,
+                userPrompt: message,
+                assistantResponse,
+                toolCalls,
+                toolOutputs,
+                timestamp: new Date().toISOString(),
+            };
+            
+            // Cache the interaction
+            feedbackCache.set(initialRun.id, interactionData);
+            
+            logger.info('Chat request processed successfully', context, {
+                userId: user.uid,
+                runId: initialRun.id,
+                threadId: threadId,
+                responseLength: assistantResponse.length
+            });
+            
+            const responseData = {
+                response: assistantResponse,
+                threadId,
+                runId: initialRun.id,
+            };
+            
+            const successResponse = ApiResponseBuilder.success(responseData, context);
+            return createApiResponse(successResponse, HTTP_STATUS.OK);
+            
+        } catch (error) {
+            logger.error('Chat API error', error, context, {
+                userId: user.uid,
+                userEmail: user.email
+            });
+            
+            const errorResponse = ApiResponseBuilder.internalError('Internal server error', context);
+            return createApiResponse(errorResponse, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        }
     }
-});
+);
