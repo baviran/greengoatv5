@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export default function AuthTest() {
   const [user, setUser] = useState<any>(null);
@@ -130,12 +131,12 @@ export default function AuthTest() {
         </div>
         
         <div className="mt-6 text-center">
-          <a 
+          <Link 
             href="/" 
             className="text-blue-600 hover:text-blue-800 underline"
           >
             ← Back to Main App
-          </a>
+          </Link>
         </div>
       </div>
     </div>

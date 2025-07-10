@@ -722,7 +722,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
 // Hook to use the chat store with authentication
 export const useAuthenticatedChatStore = () => {
-  const { user, getIdToken } = useAuthContext();
+  const { user } = useAuthContext();
   const store = useChatStore();
 
 
@@ -756,7 +756,7 @@ export const useAuthenticatedChatStore = () => {
     } else {
       store.setUserContext(null);
     }
-  }, [user]); // Remove store dependency to prevent re-renders
+  }, [user, store]); // Include store dependency
 
   return store;
 };

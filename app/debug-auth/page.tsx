@@ -4,6 +4,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useAuthenticatedChatStore } from '@/app/lib/store/chatStore';
 import { useEffect, useState } from 'react';
 import { Logger } from '@/app/lib/utils/logger';
+import Link from 'next/link';
 
 const logger = Logger.getInstance();
 
@@ -93,12 +94,12 @@ export default function DebugAuth() {
         </div>
         
         <div className="mt-6 text-center">
-          <a 
+          <Link 
             href="/" 
             className="text-blue-600 hover:text-blue-800 underline"
           >
             ← Back to Main App
-          </a>
+          </Link>
         </div>
       </div>
     </div>
