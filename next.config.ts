@@ -31,6 +31,17 @@ const nextConfig: NextConfig = {
             },
         ],
     },
+    webpack: (config, { dev, isServer }) => {
+        // Add polyfills for Node.js globals in browser environment
+        if (!isServer) {
+            config.resolve.fallback = {
+                ...config.resolve.fallback,
+                setImmediate: false,
+            };
+        }
+        
+        return config;
+    },
 };
 
 export default nextConfig;

@@ -19,14 +19,25 @@ interface EnhancedLogContext extends LogContext {
   traceId?: string;
 }
 
+// Browser-compatible setImmediate polyfill
+const setImmediatePolyfill = (callback: () => void) => {
+  if (typeof setImmediate !== 'undefined') {
+    setImmediate(callback);
+  } else {
+    setTimeout(callback, 0);
+  }
+};
+
 export class Logger {
   private static instance: Logger;
   private logger: pino.Logger;
   private isProduction: boolean;
+  private isBrowser: boolean;
 
   private constructor() {
     // Configure logger for Next.js server environment
     this.isProduction = process.env.NODE_ENV === 'production';
+    this.isBrowser = typeof window !== 'undefined';
     
     // In development, use simple console logging to avoid worker exit issues
     if (!this.isProduction) {
@@ -56,10 +67,15 @@ export class Logger {
     const logData = { ...enhancedContext, ...data };
     
     if (this.isProduction) {
-      // Async logging in production for better performance
-      setImmediate(() => {
+      // Use browser-compatible async logging
+      setImmediatePolyfill(() => {
         try {
-          this.logger.info(logData, message);
+          if (this.isBrowser) {
+            // In browser, use console.log for now to avoid pino issues
+            console.log(`[INFO] ${message}`, logData);
+          } else {
+            this.logger.info(logData, message);
+          }
         } catch {
           // Ignore worker exit errors during development
         }
@@ -69,7 +85,11 @@ export class Logger {
       try {
         const timestamp = new Date().toISOString();
         const logString = `[${timestamp}] [INFO] ${message} ${JSON.stringify(logData)}\n`;
-        process.stdout.write(logString);
+        if (this.isBrowser) {
+          console.log(`[INFO] ${message}`, logData);
+        } else {
+          process.stdout.write(logString);
+        }
       } catch {
         // Silently ignore if stdout fails
       }
@@ -92,10 +112,15 @@ export class Logger {
     }
 
     if (this.isProduction) {
-      // Async logging in production for better performance
-      setImmediate(() => {
+      // Use browser-compatible async logging
+      setImmediatePolyfill(() => {
         try {
-          this.logger.error(logData, message);
+          if (this.isBrowser) {
+            // In browser, use console.error for now to avoid pino issues
+            console.error(`[ERROR] ${message}`, logData);
+          } else {
+            this.logger.error(logData, message);
+          }
         } catch {
           // Ignore worker exit errors during development
         }
@@ -105,7 +130,11 @@ export class Logger {
       try {
         const timestamp = new Date().toISOString();
         const logString = `[${timestamp}] [ERROR] ${message} ${JSON.stringify(logData)}\n`;
-        process.stderr.write(logString);
+        if (this.isBrowser) {
+          console.error(`[ERROR] ${message}`, logData);
+        } else {
+          process.stderr.write(logString);
+        }
       } catch {
         // Silently ignore if stderr fails
       }
@@ -118,10 +147,15 @@ export class Logger {
     const logData = { ...enhancedContext, ...data };
     
     if (this.isProduction) {
-      // Async logging in production for better performance
-      setImmediate(() => {
+      // Use browser-compatible async logging
+      setImmediatePolyfill(() => {
         try {
-          this.logger.warn(logData, message);
+          if (this.isBrowser) {
+            // In browser, use console.warn for now to avoid pino issues
+            console.warn(`[WARN] ${message}`, logData);
+          } else {
+            this.logger.warn(logData, message);
+          }
         } catch {
           // Ignore worker exit errors during development
         }
@@ -131,7 +165,11 @@ export class Logger {
       try {
         const timestamp = new Date().toISOString();
         const logString = `[${timestamp}] [WARN] ${message} ${JSON.stringify(logData)}\n`;
-        process.stdout.write(logString);
+        if (this.isBrowser) {
+          console.warn(`[WARN] ${message}`, logData);
+        } else {
+          process.stdout.write(logString);
+        }
       } catch {
         // Silently ignore if stdout fails
       }
@@ -144,10 +182,15 @@ export class Logger {
     const logData = { ...enhancedContext, ...data };
     
     if (this.isProduction) {
-      // Async logging in production for better performance
-      setImmediate(() => {
+      // Use browser-compatible async logging
+      setImmediatePolyfill(() => {
         try {
-          this.logger.debug(logData, message);
+          if (this.isBrowser) {
+            // In browser, use console.debug for now to avoid pino issues
+            console.debug(`[DEBUG] ${message}`, logData);
+          } else {
+            this.logger.debug(logData, message);
+          }
         } catch {
           // Ignore worker exit errors during development
         }
@@ -157,7 +200,11 @@ export class Logger {
       try {
         const timestamp = new Date().toISOString();
         const logString = `[${timestamp}] [DEBUG] ${message} ${JSON.stringify(logData)}\n`;
-        process.stdout.write(logString);
+        if (this.isBrowser) {
+          console.debug(`[DEBUG] ${message}`, logData);
+        } else {
+          process.stdout.write(logString);
+        }
       } catch {
         // Silently ignore if stdout fails
       }
@@ -199,22 +246,23 @@ export class Logger {
 
   // Private method to enhance context with additional metadata
   private enhanceContext(context?: LogContext): EnhancedLogContext {
-    if (!context) return {};
-    
     const enhanced: EnhancedLogContext = {
       ...context,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      traceId: this.generateTraceId()
     };
 
-    // Add trace ID if request ID is available
-    if (context.requestId) {
-      enhanced.traceId = context.requestId;
+    // Add performance metrics if available
+    if (typeof performance !== 'undefined' && performance.now) {
+      enhanced.duration = performance.now();
     }
 
-    // Filter out undefined values to keep logs clean
-    return Object.fromEntries(
-      Object.entries(enhanced).filter(([, value]) => value !== undefined)
-    );
+    return enhanced;
+  }
+
+  // Generate a simple trace ID for request correlation
+  private generateTraceId(): string {
+    return Math.random().toString(36).substr(2, 9);
   }
 
   // Legacy methods for backward compatibility
@@ -235,7 +283,7 @@ export class Logger {
   }
 }
 
-// Helper class for contextual logging
+// Logger with preset context for consistent logging
 class LoggerWithContext {
   constructor(private logger: Logger, private defaultContext: LogContext) {}
 
@@ -269,3 +317,5 @@ class LoggerWithContext {
     this.logger.requestEnd(message, startTime, mergedContext, data);
   }
 }
+
+export default Logger;

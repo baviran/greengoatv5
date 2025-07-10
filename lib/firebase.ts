@@ -26,6 +26,10 @@ googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
 
+// Add additional configurations for better redirect support
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
+
 // Initialize Cloud Firestore and get a reference to the service
 export const db = getFirestore(app);
 

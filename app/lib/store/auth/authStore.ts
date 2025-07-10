@@ -294,11 +294,64 @@ if (typeof window !== 'undefined') {
     const setupFirebaseAuthListener = async () => {
       try {
         const { auth } = await import('@/lib/firebase');
-        const { onAuthStateChanged } = await import('firebase/auth');
+        const { onAuthStateChanged, getRedirectResult } = await import('firebase/auth');
+        
+        // Handle redirect result on app initialization - FIRST PRIORITY
+        logger.info('Checking for redirect result', undefined, {
+          hasCurrentUser: !!auth.currentUser
+        });
+        
+        try {
+          const result = await getRedirectResult(auth);
+          if (result) {
+            logger.info('Firebase redirect authentication successful', undefined, {
+              userId: result.user.uid,
+              email: result.user.email,
+              displayName: result.user.displayName,
+              provider: result.providerId
+            });
+            
+            // Immediately set the user in our store
+            const authState = authStore.getState();
+            const user = {
+              uid: result.user.uid,
+              email: result.user.email,
+              displayName: result.user.displayName,
+              photoURL: result.user.photoURL,
+              emailVerified: result.user.emailVerified,
+              token: null
+            };
+            
+            authState.setUser(user);
+            
+            // Try to get the ID token immediately
+            try {
+              const token = await result.user.getIdToken();
+              authState.updateToken(token);
+              logger.info('ID token obtained after redirect', undefined, {
+                userId: user.uid,
+                hasToken: !!token
+              });
+            } catch (tokenError) {
+              logger.warn('Failed to get ID token after redirect', undefined, { tokenError });
+            }
+          } else {
+            logger.info('No redirect result found');
+          }
+        } catch (redirectError) {
+          logger.error('Firebase redirect authentication error', redirectError);
+        }
         
         // Listen for auth state changes
         onAuthStateChanged(auth, (firebaseUser) => {
           const authState = authStore.getState();
+          
+          logger.info('Firebase auth state changed', undefined, {
+            hasUser: !!firebaseUser,
+            userId: firebaseUser?.uid,
+            email: firebaseUser?.email,
+            currentStoreUser: authState.user?.uid
+          });
           
           if (firebaseUser) {
             // User is signed in
@@ -311,17 +364,33 @@ if (typeof window !== 'undefined') {
               token: null // Will be updated separately
             };
             
-            logger.info('Firebase user authenticated', undefined, {
-              userId: user.uid,
-              email: user.email,
-              displayName: user.displayName
-            });
-            
-            authState.setUser(user);
+            // Only update if this is different from current user
+            if (!authState.user || authState.user.uid !== user.uid) {
+              logger.info('Setting new authenticated user', undefined, {
+                userId: user.uid,
+                email: user.email,
+                displayName: user.displayName
+              });
+              
+              authState.setUser(user);
+              
+              // Get and update token
+              firebaseUser.getIdToken().then(token => {
+                authState.updateToken(token);
+                logger.info('ID token updated', undefined, {
+                  userId: user.uid,
+                  hasToken: !!token
+                });
+              }).catch(error => {
+                logger.warn('Failed to get ID token', undefined, { error });
+              });
+            }
           } else {
             // User is signed out
-            logger.info('Firebase user signed out');
-            authState.setUser(null);
+            if (authState.user) {
+              logger.info('User signed out, clearing store');
+              authState.setUser(null);
+            }
           }
         });
         

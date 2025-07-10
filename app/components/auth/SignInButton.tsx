@@ -21,16 +21,66 @@ export const SignInButton: React.FC<SignInButtonProps> = ({
     return <UserProfile className={className} />;
   }
   
-  // Helper function for Google sign in
+  // Helper function for Google sign in with environment-aware strategy
   const signInWithGoogle = async () => {
     try {
       const { auth } = await import('@/lib/firebase');
-      const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
+      const { signInWithRedirect, signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
       
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error('Error signing in with Google:', error);
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      console.log('🔐 Sign-in button clicked');
+      console.log('🏢 Environment:', isProduction ? 'Production' : 'Development');
+      console.log('🎯 Authentication strategy:', isProduction ? 'Redirect' : 'Popup');
+      console.log('🔧 Current Firebase user:', auth.currentUser?.uid || 'None');
+      console.log('🌐 Current URL:', window.location.href);
+      console.log('🏠 Current domain:', window.location.hostname);
+      console.log('🔗 Expected auth domain:', process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN);
+      
+      if (isProduction) {
+        // In production, use redirect to avoid COOP issues
+        console.log('🔄 Using redirect authentication for production');
+        console.log('🔧 Firebase config check:', {
+          apiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+          authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        });
+        
+        await signInWithRedirect(auth, provider);
+        console.log('✅ Redirect initiated successfully');
+      } else {
+        // In development, use popup for better developer experience
+        console.log('🪟 Using popup authentication for development');
+        try {
+          const result = await signInWithPopup(auth, provider);
+          console.log('✅ Popup authentication successful:', result.user.email);
+          console.log('🎫 User details:', {
+            uid: result.user.uid,
+            email: result.user.email,
+            displayName: result.user.displayName,
+            emailVerified: result.user.emailVerified
+          });
+        } catch (popupError: any) {
+          console.warn('❌ Popup authentication failed, trying redirect as fallback:', popupError);
+          console.log('🔧 Popup error details:', {
+            code: popupError.code,
+            message: popupError.message
+          });
+          await signInWithRedirect(auth, provider);
+        }
+      }
+    } catch (error: any) {
+      console.error('💥 Error signing in with Google:', error);
+      console.log('🔧 Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
     }
   };
 

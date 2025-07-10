@@ -130,6 +130,13 @@ const getAuthToken = async (): Promise<string | null> => {
   // Import Firebase auth directly to get the current user's token
   if (typeof window !== 'undefined') {
     try {
+      // First try to get from global variable set by auth hook
+      const globalToken = (window as any).__authToken;
+      if (globalToken) {
+        return globalToken;
+      }
+      
+      // Fallback to Firebase auth
       const { auth } = await import('@/lib/firebase');
       const user = auth.currentUser;
       if (user) {
@@ -724,14 +731,18 @@ export const useAuthenticatedChatStore = () => {
   React.useEffect(() => {
     const updateToken = async () => {
       if (user) {
-        const token = await getIdToken();
-        if (typeof window !== 'undefined') {
-          (window as any).__authToken = token;
+        try {
+          const token = await user.getIdToken(true);
+          if (typeof window !== 'undefined') {
+            (window as any).__authToken = token;
+          }
+        } catch (error) {
+          logger.error('Failed to get auth token', error, { component: 'chat-store' });
         }
       }
     };
     updateToken();
-  }, [user, getIdToken]); // Include getIdToken in dependencies
+  }, [user]); // Use user directly instead of getIdToken function
 
   // Update user context when user changes
   React.useEffect(() => {
@@ -745,7 +756,7 @@ export const useAuthenticatedChatStore = () => {
     } else {
       store.setUserContext(null);
     }
-  }, [user, store]);
+  }, [user]); // Remove store dependency to prevent re-renders
 
   return store;
 };
