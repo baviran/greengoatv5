@@ -1,0 +1,259 @@
+# Migration Guide
+
+## 🟣 Migration Patterns
+
+### Store Migration Guidelines
+
+#### Common Migration Patterns
+```typescript
+// ❌ Old Pattern -> ✅ New Pattern
+
+// Auth usage
+- import { useAuthContext } from '@/context/auth-context';
+- const { user, loading, signOut } = useAuthContext();
++ import { useAppAuth } from '@/app/lib/store/appStore';
++ const { user, isLoading, isAuthenticated } = useAppAuth();
+
+// Theme usage
+- import { useThemeStore } from './lib/store/themeStore';
+- const { value: theme, toggleTheme } = useThemeStore();
++ import { useAppSelector, appActions } from '@/app/lib/store/appStore';
++ const theme = useAppSelector(store => store.theme.theme);
++ appActions.toggleTheme();
+
+// Chat usage
+- import { useChatStore } from './lib/store/chatStore';
+- const { activeThreadId, sendMessage } = useChatStore();
++ import { useAppChat } from '@/app/lib/store/appStore';
++ const { activeThreadId, sendMessage } = useAppChat();
+
+// Loading states
+- const [loading, setLoading] = useState(false);
++ const isLoading = useAppSelector(store => store.loading.isLoading('operation-key'));
++ appActions.setLoading('operation-key', true);
+```
+
+#### Initialization Migration
+```typescript
+// ❌ Old initialization
+useEffect(() => {
+  initializeTheme();
+  initializeStore();
+  initializeAuth();
+}, []);
+
+// ✅ New initialization
+const { manager } = useAppStore();
+useEffect(() => {
+  manager.initialize(user?.uid);
+}, [manager, user]);
+```
+
+#### Error Handling Migration
+```typescript
+// ❌ Old error handling
+const [error, setError] = useState(null);
+
+// ✅ New error handling
+const hasErrors = useAppSelector(store => 
+  Object.keys(store.error.errors).length > 0
+);
+appActions.setError('operation-key', errorMessage);
+```
+
+### Logging Migration
+
+#### Console.log to Logger Migration
+```typescript
+// ❌ Old logging patterns
+console.log('User authenticated:', user.uid);
+console.error('Auth failed:', error);
+console.warn('Rate limit exceeded');
+
+// ✅ New logging patterns
+logger.info('User authenticated', { userId: user.uid, component: 'auth' });
+logger.error('Authentication failed', error, { component: 'auth' });
+logger.warn('Rate limit exceeded', { component: 'rate-limiter' });
+```
+
+#### Component Logging Migration
+```typescript
+// ❌ Old component logging
+const ChatComponent = () => {
+  const handleSubmit = async (message) => {
+    console.log('Sending message:', message);
+    try {
+      await sendMessage(message);
+      console.log('Message sent successfully');
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
+  };
+};
+
+// ✅ New component logging
+const ChatComponent = () => {
+  const logger = Logger.getInstance();
+  const { user } = useAppAuth();
+
+  const handleSubmit = async (message) => {
+    logger.info('Message submission started', {
+      component: 'chat-component',
+      action: 'submit-message',
+      userId: user?.uid
+    });
+
+    try {
+      await sendMessage(message);
+      logger.info('Message sent successfully', {
+        component: 'chat-component',
+        action: 'message-sent',
+        userId: user?.uid
+      });
+    } catch (error) {
+      logger.error('Message submission failed', error, {
+        component: 'chat-component',
+        action: 'message-failed',
+        userId: user?.uid
+      });
+    }
+  };
+};
+```
+
+### API Route Migration
+
+#### Old API Routes to New Standards
+```typescript
+// ❌ Old API route pattern
+export async function POST(request: NextRequest) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    
+    const data = await request.json();
+    const result = await processData(data);
+    
+    return NextResponse.json({ success: true, data: result });
+  } catch (error) {
+    console.error('API error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// ✅ New API route pattern
+export const POST = withApiResponse('component-name', 'action-name')(
+  async (request: NextRequest, authResult: AuthResultWithContext) => {
+    const { user, context } = authResult;
+    
+    const data = await request.json();
+    const result = await processData(data);
+    
+    const response = ApiResponseBuilder.success(result, context);
+    return createApiResponse(response, HTTP_STATUS.OK);
+  }
+);
+```
+
+### Error Handling Migration
+
+#### Generic Errors to Specific Errors
+```typescript
+// ❌ Old error handling
+if (!user) {
+  throw new Error('User not found');
+}
+
+if (!email) {
+  throw new Error('Email is required');
+}
+
+// ✅ New error handling
+if (!user) {
+  throw new NotFoundError('User', userId);
+}
+
+if (!email) {
+  throw new ValidationError('Email is required', 'email');
+}
+```
+
+### Service Layer Migration
+
+#### Old Service Patterns to New Standards
+```typescript
+// ❌ Old service pattern
+export class UserService {
+  async createUser(userData: any) {
+    console.log('Creating user:', userData.email);
+    
+    try {
+      const user = await this.userRepository.create(userData);
+      console.log('User created:', user.id);
+      return user;
+    } catch (error) {
+      console.error('User creation failed:', error);
+      throw error;
+    }
+  }
+}
+
+// ✅ New service pattern
+export class UserService {
+  private logger = Logger.getInstance().withContext({
+    component: 'user-service'
+  });
+
+  async createUser(userData: CreateUserData, context?: LogContext) {
+    const mergedContext = { ...context, action: 'create-user' };
+    
+    this.logger.info('Starting user creation', mergedContext, {
+      email: userData.email
+    });
+    
+    try {
+      if (!userData.email) {
+        throw new ValidationError('Email is required', 'email');
+      }
+
+      const user = await this.userRepository.create(userData);
+      
+      this.logger.info('User created successfully', mergedContext, {
+        userId: user.id
+      });
+      
+      return user;
+    } catch (error) {
+      this.logger.error('User creation failed', error, mergedContext);
+      throw error;
+    }
+  }
+}
+```
+
+### Migration Checklist
+
+#### Component Migration Steps
+1. Replace `console.log` with `Logger.getInstance()`
+2. Add user context to all logging
+3. Update store imports to use unified store
+4. Replace local state with store selectors
+5. Update error handling to use AppError types
+6. Add proper TypeScript types
+7. Test functionality after migration
+
+#### API Route Migration Steps
+1. Replace manual auth with middleware
+2. Update response format to use ApiResponseBuilder
+3. Replace generic errors with specific error types
+4. Add proper logging with context
+5. Update HTTP status codes to use constants
+6. Add request/response validation
+
+#### Service Migration Steps
+1. Add Logger with component context
+2. Replace generic errors with specific types
+3. Add input validation
+4. Structure methods with consistent patterns
+5. Add proper error handling
+6. Include context in all operations

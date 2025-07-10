@@ -1,0 +1,108 @@
+# API Route Rules
+
+## 🟡 API Route Standards
+
+### Authentication Context
+```typescript
+// ✅ Use enhanced auth middleware
+export const POST = withAuth(async (req, authResult) => {
+  const { user, context } = authResult;
+  const logger = Logger.getInstance().withContext(context);
+  
+  logger.info('API request started', { endpoint: '/api/users' });
+  // ... handler code
+});
+```
+
+### Request Logging
+```typescript
+// ✅ Log request lifecycle
+export const POST = withRequestContext(async (req, context) => {
+  const logger = Logger.getInstance().withContext(context);
+  
+  logger.requestStart('Processing user request');
+  const startTime = Date.now();
+  
+  try {
+    // ... processing
+    logger.requestEnd('User request completed', startTime);
+  } catch (error) {
+    logger.error('User request failed', error);
+    throw error;
+  }
+});
+```
+
+### Route Handler Pattern
+```typescript
+// ✅ Good - use withApiResponse middleware
+export const GET = withApiResponse('component-name', 'action-name')(
+  async (request: NextRequest, authResult: AuthResultWithContext) => {
+    const { user, context } = authResult;
+    
+    // Your logic here
+    const data = await getDataFromService();
+    
+    const response = ApiResponseBuilder.success(data, context);
+    return createApiResponse(response, HTTP_STATUS.OK);
+  }
+);
+
+// ❌ Bad - manual auth and response handling
+export const GET = withAuth(async (request: NextRequest, authResult) => {
+  // Manual response handling without unified format
+  return NextResponse.json({ data: result });
+});
+```
+
+### Complete API Route Example
+```typescript
+import { withAuth } from '@/lib/auth-middleware';
+import { Logger } from '@/app/lib/utils/logger';
+
+export const POST = withAuth(async (req, authResult) => {
+  const { user, context } = authResult;
+  const logger = Logger.getInstance().withContext({
+    ...context,
+    component: 'user-api',
+    action: 'update-profile'
+  });
+  
+  logger.requestStart('Profile update request');
+  
+  try {
+    const userData = await req.json();
+    
+    logger.info('Updating user profile', {
+      userId: user.uid,
+      fields: Object.keys(userData)
+    });
+    
+    const updatedUser = await userService.updateUser(user.email, userData);
+    
+    logger.info('Profile updated successfully', {
+      userId: user.uid
+    });
+    
+    return NextResponse.json({ user: updatedUser });
+    
+  } catch (error) {
+    logger.error('Profile update failed', error, {
+      userId: user.uid
+    });
+    
+    return NextResponse.json(
+      { error: 'Profile update failed' },
+      { status: 500 }
+    );
+  }
+});
+```
+
+### User Context Integration
+- Include user context in all authenticated operations
+- Log user actions with proper context
+- Validate user permissions before processing
+- Filter responses by user ownership
+
+@api-route-template.ts

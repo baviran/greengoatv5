@@ -1,0 +1,76 @@
+# TipTap Editor Rules
+
+## Editor Component Patterns
+
+### TipTap Component Logging
+```typescript
+// ✅ Good - TipTap component with proper logging
+export const TipTapEditor: React.FC = () => {
+  const logger = Logger.getInstance();
+  const { user } = useAppAuth();
+  
+  const handleEditorChange = useCallback((content: string) => {
+    logger.debug('Editor content changed', {
+      component: 'tiptap-editor',
+      action: 'content-change',
+      userId: user?.uid,
+      contentLength: content.length
+    });
+  }, [logger, user?.uid]);
+  
+  const handleToolbarAction = useCallback((action: string) => {
+    logger.info('Toolbar action triggered', {
+      component: 'tiptap-editor',
+      action: 'toolbar-action',
+      toolbarAction: action,
+      userId: user?.uid
+    });
+  }, [logger, user?.uid]);
+  
+  return (
+    <div className="tiptap-editor">
+      {/* Editor implementation */}
+    </div>
+  );
+};
+```
+
+### Editor Performance Patterns
+```typescript
+// ✅ Good - performance monitoring for editor
+useEffect(() => {
+  const startTime = performance.now();
+  
+  // Editor initialization
+  initializeEditor();
+  
+  const endTime = performance.now();
+  logger.info('Editor initialized', {
+    component: 'tiptap-editor',
+    action: 'initialize',
+    duration: endTime - startTime,
+    userId: user?.uid
+  });
+}, []);
+```
+
+### Editor State Management
+- Use proper state management for editor content
+- Log significant editor actions (save, load, etc.)
+- Include user context in all editor operations
+- Monitor performance for large documents
+
+### Editor Error Handling
+```typescript
+// ✅ Good - editor error handling
+const handleEditorError = useCallback((error: Error) => {
+  logger.error('Editor error occurred', error, {
+    component: 'tiptap-editor',
+    action: 'editor-error',
+    userId: user?.uid
+  });
+  
+  // Show user-friendly error message
+  appActions.showError('Editor Error', 'An error occurred while editing');
+}, [logger, user?.uid]);
+```

@@ -1,0 +1,158 @@
+# Client-Side Logging Rules
+
+## 🔵 Client-Side Logging Standards
+
+### Client-Side Logging
+```typescript
+// ✅ Client-side structured logging
+const logger = Logger.getInstance();
+
+// For user interactions
+logger.info('User interaction', {
+  component: 'chat-interface',
+  action: 'message-sent',
+  userId: user?.uid
+});
+
+// For errors
+logger.error('Client error occurred', error, {
+  component: 'chat-interface',
+  action: 'message-failed',
+  userId: user?.uid
+});
+```
+
+### Component Logging Patterns
+```typescript
+// ✅ Good - component-specific logging
+const ChatComponent: React.FC = () => {
+  const logger = Logger.getInstance();
+  const { user } = useAppAuth();
+
+  const handleSubmit = async (message: string) => {
+    logger.info('Message submission started', {
+      component: 'chat-component',
+      action: 'submit-message',
+      userId: user?.uid
+    });
+
+    try {
+      await sendMessage(message);
+      logger.info('Message sent successfully', {
+        component: 'chat-component',
+        action: 'message-sent',
+        userId: user?.uid
+      });
+    } catch (error) {
+      logger.error('Message submission failed', error, {
+        component: 'chat-component',
+        action: 'message-failed',
+        userId: user?.uid
+      });
+    }
+  };
+
+  return (
+    // ... component JSX
+  );
+};
+```
+
+### User Interaction Logging
+```typescript
+// ✅ Good - user interaction tracking
+const handleUserClick = (action: string) => {
+  logger.info('User interaction', {
+    component: 'sidebar',
+    action: action,
+    userId: user?.uid,
+    timestamp: new Date().toISOString()
+  });
+};
+
+const handleFormSubmit = (formData: any) => {
+  logger.info('Form submission', {
+    component: 'user-form',
+    action: 'form-submit',
+    userId: user?.uid,
+    formFields: Object.keys(formData)
+  });
+};
+```
+
+### Error Boundary Logging
+```typescript
+// ✅ Good - error boundary logging
+class ErrorBoundary extends React.Component {
+  private logger = Logger.getInstance();
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    this.logger.error('React error boundary caught error', error, {
+      component: 'error-boundary',
+      action: 'component-error',
+      errorInfo: errorInfo.componentStack
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorFallback />;
+    }
+    return this.props.children;
+  }
+}
+```
+
+### Performance Logging
+```typescript
+// ✅ Good - performance monitoring
+useEffect(() => {
+  const startTime = performance.now();
+  
+  // Component initialization
+  initializeComponent();
+  
+  const endTime = performance.now();
+  logger.debug('Component initialization completed', undefined, {
+    component: 'chat-component',
+    duration: endTime - startTime,
+    userId: user?.uid
+  });
+}, []);
+```
+
+### State Change Logging
+```typescript
+// ✅ Good - state change debugging
+const { user, isLoading, isInitialized } = useAppAuth();
+
+useEffect(() => {
+  logger.debug('Auth state changed', undefined, {
+    component: 'auth-provider',
+    hasUser: !!user,
+    isLoading,
+    isInitialized,
+    userId: user?.uid
+  });
+}, [user, isLoading, isInitialized]);
+```
+
+### Navigation Logging
+```typescript
+// ✅ Good - navigation tracking
+const router = useRouter();
+
+useEffect(() => {
+  const handleRouteChange = (url: string) => {
+    logger.info('Route changed', {
+      component: 'navigation',
+      action: 'route-change',
+      url,
+      userId: user?.uid
+    });
+  };
+
+  router.events.on('routeChangeComplete', handleRouteChange);
+  return () => router.events.off('routeChangeComplete', handleRouteChange);
+}, [router, user?.uid]);
+```

@@ -1,0 +1,122 @@
+# Performance Guidelines
+
+## 🚀 Performance Best Practices
+
+### Production Logging
+- **Use async logging for better performance**
+- **Include request tracing for monitoring**
+- **Log structured data for better parsing**
+- **Use appropriate log levels to reduce noise**
+
+### Development Logging
+- **Use debug level for detailed debugging**
+- **Include stack traces for errors**
+- **Use pretty printing for better readability**
+- **Log component boundaries for flow tracking**
+
+### Request Tracing
+```typescript
+// ✅ Good - request tracing with timing
+export const POST = withRequestContext(async (req, context) => {
+  const logger = Logger.getInstance().withContext(context);
+  
+  logger.requestStart('Processing user request');
+  const startTime = Date.now();
+  
+  try {
+    // ... processing
+    logger.requestEnd('User request completed', startTime);
+  } catch (error) {
+    logger.error('User request failed', error);
+    throw error;
+  }
+});
+```
+
+### Async Logging
+```typescript
+// ✅ Good - async logging patterns
+const logger = Logger.getInstance();
+
+// Use async for non-blocking logging
+logger.info('Operation started', context);
+
+// Batch log entries when possible
+const logBatch = [
+  { level: 'info', message: 'Step 1 completed', context },
+  { level: 'info', message: 'Step 2 completed', context },
+  { level: 'info', message: 'Step 3 completed', context }
+];
+```
+
+### Memory Management
+```typescript
+// ✅ Good - memory efficient logging
+const logger = Logger.getInstance().withContext({
+  component: 'user-service'
+});
+
+// Reuse logger instance
+class UserService {
+  private logger = Logger.getInstance().withContext({
+    component: 'user-service'
+  });
+  
+  async createUser(userData: any) {
+    this.logger.info('Creating user', { action: 'create-user' });
+    // ... implementation
+  }
+}
+```
+
+### Performance Monitoring
+```typescript
+// ✅ Good - performance monitoring
+export function monitorStorePerformance(storeName: string) {
+  return function<T extends Record<string, any>>(store: T): T {
+    logger.debug('Performance monitoring enabled for store', undefined, { storeName });
+    return store; // Non-intrusive monitoring
+  };
+}
+
+// ❌ Bad - performance monitoring that breaks functionality
+export function monitorStorePerformance(store) {
+  return new Proxy(store, { /* complex proxy logic that breaks Zustand */ });
+}
+```
+
+### Efficient Data Structures
+```typescript
+// ✅ Good - efficient data handling
+const processLargeDataset = (data: any[]) => {
+  logger.info('Processing dataset', { 
+    count: data.length, 
+    component: 'data-processor' 
+  });
+  
+  // Process in chunks for better performance
+  const chunkSize = 100;
+  for (let i = 0; i < data.length; i += chunkSize) {
+    const chunk = data.slice(i, i + chunkSize);
+    // Process chunk...
+  }
+};
+```
+
+### Caching Strategies
+```typescript
+// ✅ Good - cache validation results
+const userValidationCache = new Map<string, {
+  status: UserValidationStatus;
+  error: string;
+  timestamp: number;
+}>();
+
+const VALIDATION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Check cache first
+const cached = userValidationCache.get(user.uid);
+if (cached && (Date.now() - cached.timestamp) < VALIDATION_CACHE_DURATION) {
+  return cached.status;
+}
+```

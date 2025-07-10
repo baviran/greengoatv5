@@ -1,0 +1,87 @@
+# Logging Standards
+
+## 🔴 Critical Rules
+
+### Logging Standards
+- **Never use console.log, console.error, console.warn, or console.debug**
+- **Always use Logger.getInstance() for logging**
+- **Include context object with userId, requestId, component, action when available**
+- **Use appropriate log levels:**
+  - `debug` for development debugging
+  - `info` for business logic and normal flow
+  - `warn` for recoverable issues
+  - `error` for exceptions and failures
+
+### Logging Context Requirements
+```typescript
+// ✅ Good - with context
+const logger = Logger.getInstance();
+const context = {
+  userId: user.uid,
+  requestId: req.headers.get('x-request-id'),
+  component: 'user-service',
+  action: 'create-user'
+};
+logger.info('User created successfully', context, { email: user.email });
+
+// ❌ Bad - without context
+console.log('User created successfully');
+```
+
+### Error Logging
+```typescript
+// ✅ Good - structured error logging
+try {
+  // ... code
+} catch (error) {
+  logger.error('User creation failed', error, context, {
+    email: userData.email,
+    attemptedRole: userData.role
+  });
+}
+
+// ❌ Bad - console error
+catch (error) {
+  console.error('User creation failed:', error);
+}
+```
+
+### Console.log Replacement
+```typescript
+// ❌ Replace these patterns
+console.log('User authenticated:', user.uid);
+console.error('Auth failed:', error);
+console.warn('Rate limit exceeded');
+
+// ✅ With these patterns
+logger.info('User authenticated', { userId: user.uid, component: 'auth' });
+logger.error('Authentication failed', error, { component: 'auth' });
+logger.warn('Rate limit exceeded', { component: 'rate-limiter' });
+```
+
+### Client-Side Logging
+```typescript
+// ✅ Client-side structured logging
+const logger = Logger.getInstance();
+
+// For user interactions
+logger.info('User interaction', {
+  component: 'chat-interface',
+  action: 'message-sent',
+  userId: user?.uid
+});
+
+// For errors
+logger.error('Client error occurred', error, {
+  component: 'chat-interface',
+  action: 'message-failed',
+  userId: user?.uid
+});
+```
+
+### Backward Compatibility
+- When migrating existing code, maintain original functionality
+- Add context progressively - start with component, then add action/userId
+- Use `Logger.getInstance().withContext()` for consistent context
+
+@logging-example.ts

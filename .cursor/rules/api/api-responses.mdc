@@ -1,0 +1,76 @@
+# API Response Standards
+
+## 🔵 Response Format Rules
+
+### Response Format Rules
+- **Always use ApiResponseBuilder for all API responses**
+- **Never return raw JSON objects**
+- **Use HTTP_STATUS constants instead of numeric codes**
+- **Include request context in all responses**
+- **Use structured error codes from ERROR_CODES**
+
+### Success Response Pattern
+```typescript
+// ✅ Good - unified success response
+const successResponse = ApiResponseBuilder.success(userData, context);
+return createApiResponse(successResponse, HTTP_STATUS.OK);
+
+// ❌ Bad - raw JSON response
+return NextResponse.json({ success: true, data: userData });
+```
+
+### Error Response Pattern
+```typescript
+// ✅ Good - structured error response
+const errorResponse = ApiResponseBuilder.validationError(
+  'Email is required', 
+  context, 
+  'email'
+);
+return createApiResponse(errorResponse, HTTP_STATUS.BAD_REQUEST);
+
+// ❌ Bad - raw error response
+return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+```
+
+### Paginated Response Pattern
+```typescript
+// ✅ Good - structured pagination
+const pagination = createPaginationInfo(total, count, limit, offset);
+const response = ApiResponseBuilder.paginated(data, pagination, context);
+return createApiResponse(response, HTTP_STATUS.OK);
+
+// ❌ Bad - manual pagination structure
+return NextResponse.json({
+  data: data,
+  pagination: { total, count, limit, offset, hasMore }
+});
+```
+
+### Response Context Requirements
+- Include requestId in all responses
+- Include timestamp for audit trails
+- Include user context for authenticated requests
+- Include component and action identifiers
+
+### HTTP Status Code Usage
+```typescript
+// ✅ Good - use constants
+return createApiResponse(response, HTTP_STATUS.OK);
+return createApiResponse(response, HTTP_STATUS.CREATED);
+return createApiResponse(response, HTTP_STATUS.BAD_REQUEST);
+return createApiResponse(response, HTTP_STATUS.UNAUTHORIZED);
+return createApiResponse(response, HTTP_STATUS.NOT_FOUND);
+return createApiResponse(response, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+
+// ❌ Bad - magic numbers
+return NextResponse.json(data, { status: 200 });
+return NextResponse.json(error, { status: 400 });
+return NextResponse.json(error, { status: 500 });
+```
+
+### Response Validation
+- Validate response structure before sending
+- Include error details for debugging
+- Use consistent error message formats
+- Include correlation IDs for tracking

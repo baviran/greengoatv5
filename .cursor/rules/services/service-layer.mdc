@@ -1,0 +1,240 @@
+# Service Layer Rules
+
+## 🟢 Service Layer Standards
+
+### Service Logging
+```typescript
+// ✅ Component-specific logging
+export class UserService {
+  private logger = Logger.getInstance().withContext({
+    component: 'user-service'
+  });
+  
+  async createUser(userData: CreateUserData, context?: LogContext) {
+    const mergedContext = { ...context, action: 'create-user' };
+    
+    this.logger.info('Starting user creation', mergedContext, {
+      email: userData.email
+    });
+    
+    try {
+      // ... implementation
+      this.logger.info('User created successfully', mergedContext, {
+        userId: newUser.id
+      });
+    } catch (error) {
+      this.logger.error('User creation failed', error, mergedContext);
+      throw error;
+    }
+  }
+}
+```
+
+### Service Error Handling
+```typescript
+// ✅ Good - service-level error handling
+export class ChatService {
+  private logger = Logger.getInstance().withContext({
+    component: 'chat-service'
+  });
+
+  async createThread(userData: any, context?: LogContext): Promise<Thread> {
+    const mergedContext = { ...context, action: 'create-thread' };
+    
+    this.logger.info('Creating new thread', mergedContext, {
+      userId: userData.userId
+    });
+
+    try {
+      // Validation
+      if (!userData.userId) {
+        throw new ValidationError('User ID is required', 'userId');
+      }
+
+      // Business logic
+      const thread = await this.threadRepository.create(userData);
+      
+      this.logger.info('Thread created successfully', mergedContext, {
+        threadId: thread.id,
+        userId: userData.userId
+      });
+
+      return thread;
+    } catch (error) {
+      this.logger.error('Thread creation failed', error, mergedContext);
+      throw error;
+    }
+  }
+}
+```
+
+### Service Method Patterns
+```typescript
+// ✅ Good - consistent service method structure
+export class AirtableService {
+  private logger = Logger.getInstance().withContext({
+    component: 'airtable-service'
+  });
+
+  async logUserInteraction(
+    interactionData: InteractionData,
+    context?: LogContext
+  ): Promise<void> {
+    const mergedContext = { ...context, action: 'log-interaction' };
+    
+    this.logger.info('Logging user interaction', mergedContext, {
+      userId: interactionData.userId,
+      interactionType: interactionData.type
+    });
+
+    try {
+      // Input validation
+      this.validateInteractionData(interactionData);
+      
+      // Business logic
+      await this.airtableClient.create(interactionData);
+      
+      this.logger.info('Interaction logged successfully', mergedContext);
+    } catch (error) {
+      this.logger.error('Failed to log interaction', error, mergedContext);
+      throw error;
+    }
+  }
+
+  private validateInteractionData(data: InteractionData): void {
+    if (!data.userId) {
+      throw new ValidationError('User ID is required', 'userId');
+    }
+    if (!data.type) {
+      throw new ValidationError('Interaction type is required', 'type');
+    }
+  }
+}
+```
+
+### Service Composition
+```typescript
+// ✅ Good - service composition and dependency injection
+export class UserService {
+  private logger = Logger.getInstance().withContext({
+    component: 'user-service'
+  });
+
+  constructor(
+    private airtableService: AirtableService,
+    private authService: AuthService
+  ) {}
+
+  async createUserWithLogging(
+    userData: CreateUserData,
+    context?: LogContext
+  ): Promise<User> {
+    const mergedContext = { ...context, action: 'create-user-with-logging' };
+    
+    this.logger.info('Starting user creation with logging', mergedContext);
+
+    try {
+      // Create user
+      const user = await this.createUser(userData, mergedContext);
+      
+      // Log to Airtable
+      await this.airtableService.logUserInteraction({
+        userId: user.id,
+        type: 'user-created',
+        data: { email: user.email }
+      }, mergedContext);
+
+      return user;
+    } catch (error) {
+      this.logger.error('User creation with logging failed', error, mergedContext);
+      throw error;
+    }
+  }
+}
+```
+
+### Service Configuration
+```typescript
+// ✅ Good - service configuration with logging
+export class OpenAIService {
+  private logger = Logger.getInstance().withContext({
+    component: 'openai-service'
+  });
+
+  constructor(private config: OpenAIConfig) {
+    this.logger.info('OpenAI service initialized', undefined, {
+      model: config.model,
+      maxTokens: config.maxTokens
+    });
+  }
+
+  async generateResponse(
+    prompt: string,
+    context?: LogContext
+  ): Promise<string> {
+    const mergedContext = { ...context, action: 'generate-response' };
+    
+    this.logger.info('Generating AI response', mergedContext, {
+      promptLength: prompt.length
+    });
+
+    try {
+      const response = await this.openai.createCompletion({
+        model: this.config.model,
+        prompt: prompt,
+        max_tokens: this.config.maxTokens
+      });
+
+      this.logger.info('AI response generated successfully', mergedContext, {
+        responseLength: response.data.choices[0].text?.length || 0
+      });
+
+      return response.data.choices[0].text || '';
+    } catch (error) {
+      this.logger.error('AI response generation failed', error, mergedContext);
+      throw new ExternalServiceError('OpenAI', error.message);
+    }
+  }
+}
+```
+
+### Service Testing Patterns
+```typescript
+// ✅ Good - service testing with mocked dependencies
+describe('UserService', () => {
+  let userService: UserService;
+  let mockAirtableService: jest.Mocked<AirtableService>;
+  let mockLogger: jest.Mocked<Logger>;
+
+  beforeEach(() => {
+    mockAirtableService = {
+      logUserInteraction: jest.fn().mockResolvedValue(undefined)
+    } as any;
+
+    mockLogger = {
+      info: jest.fn(),
+      error: jest.fn(),
+      withContext: jest.fn().mockReturnThis()
+    } as any;
+
+    userService = new UserService(mockAirtableService);
+  });
+
+  it('should create user and log interaction', async () => {
+    const userData = { email: 'test@example.com' };
+    const context = { userId: 'user123' };
+
+    const result = await userService.createUserWithLogging(userData, context);
+
+    expect(mockAirtableService.logUserInteraction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: result.id,
+        type: 'user-created'
+      }),
+      context
+    );
+  });
+});
+```
+
+@service-template.ts

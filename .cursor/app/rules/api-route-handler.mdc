@@ -1,0 +1,44 @@
+# API Route Handler Patterns
+
+## App Directory Specific Rules
+
+### Route Handler Structure
+```typescript
+// ✅ Good - Next.js app directory route handler
+export const GET = withApiResponse('component-name', 'action-name')(
+  async (request: NextRequest, authResult: AuthResultWithContext) => {
+    const { user, context } = authResult;
+    
+    // Handler logic here
+    const data = await getDataFromService();
+    
+    const response = ApiResponseBuilder.success(data, context);
+    return createApiResponse(response, HTTP_STATUS.OK);
+  }
+);
+
+export const POST = withApiResponse('component-name', 'action-name')(
+  async (request: NextRequest, authResult: AuthResultWithContext) => {
+    const { user, context } = authResult;
+    
+    // Handler logic here
+    const requestData = await request.json();
+    const result = await processData(requestData);
+    
+    const response = ApiResponseBuilder.success(result, context);
+    return createApiResponse(response, HTTP_STATUS.CREATED);
+  }
+);
+```
+
+### Request Context Usage
+- Always use the provided context from middleware
+- Include component and action names in middleware call
+- Log request start/end with proper context
+- Use structured error handling
+
+### Route-Specific Patterns
+- Export named functions for each HTTP method
+- Use middleware for authentication and context
+- Follow consistent response patterns
+- Include proper error handling

@@ -1,0 +1,139 @@
+# Store Architecture Rules
+
+## 🟠 Store Architecture Standards
+
+### Unified Store Usage
+- **Always use the new unified store structure**
+- **Never use old individual store imports**
+- **Use app store composition for all state management**
+- **Follow domain-specific store patterns**
+
+### Store Import Patterns
+```typescript
+// ✅ Good - unified store usage
+import { useAppStore, useAppAuth, useAppChat, useAppSelector } from '@/app/lib/store/appStore';
+
+// ✅ Good - domain-specific hooks
+const { user, isAuthenticated } = useAppAuth();
+const { activeThreadId, sendMessage } = useAppChat();
+
+// ✅ Good - performance-optimized selectors
+const isLoading = useAppSelector(store => store.loading.globalLoading);
+
+// ❌ Bad - old individual store imports
+import { useAuthContext } from '@/context/auth-context';
+import { useChatStore } from './lib/store/chatStore';
+import { useThemeStore } from './lib/store/themeStore';
+```
+
+### Store Initialization Rules
+```typescript
+// ✅ Good - app-level initialization
+const { manager } = useAppStore();
+
+useEffect(() => {
+  if (user) {
+    manager.initialize(user.uid);
+  } else {
+    manager.initialize();
+  }
+}, [manager, user]);
+
+// ❌ Bad - manual store initialization
+useEffect(() => {
+  initializeTheme();
+  initializeStore();
+}, [initializeTheme, initializeStore]);
+```
+
+### Performance-Optimized State Access
+```typescript
+// ✅ Good - memoized selectors
+const activeThread = useAppSelector(store => 
+  store.chat.activeThreadId 
+    ? store.chat.threads.find(t => t.id === store.chat.activeThreadId)
+    : null
+);
+
+// ✅ Good - domain-specific hooks for performance
+const { activeThreadId, sendMessage } = useAppChat();
+
+// ❌ Bad - accessing entire store unnecessarily
+const { auth, chat, ui, shared } = useAppStore();
+```
+
+### Store Event Handling
+```typescript
+// ✅ Good - use app actions for cross-store operations
+import { appActions } from '@/app/lib/store/appStore';
+
+const handleSignOut = async () => {
+  await appActions.signOut();
+};
+
+const showSuccessMessage = (message: string) => {
+  appActions.showSuccess('Success', message);
+};
+
+// ❌ Bad - direct store manipulation
+const authStore = useAuthStore.getState();
+await authStore.signOut();
+```
+
+### Store Cleanup Rules
+```typescript
+// ✅ Good - proper cleanup
+useEffect(() => {
+  return () => {
+    // Cleanup is handled automatically by app store manager
+  };
+}, []);
+
+// ✅ Good - explicit reset when needed
+const { manager } = useAppStore();
+const handleReset = async () => {
+  await manager.reset();
+};
+```
+
+### Domain Store Guidelines
+
+#### Auth Domain
+```typescript
+// ✅ Good - auth operations
+const { user, isAuthenticated, isLoading } = useAppAuth();
+
+// For Firebase operations, use helper functions
+const getIdToken = async () => {
+  const { auth } = await import('@/lib/firebase');
+  return auth.currentUser?.getIdToken(true);
+};
+```
+
+#### Chat Domain
+```typescript
+// ✅ Good - chat operations
+const { 
+  activeThreadId, 
+  threads, 
+  sendMessage, 
+  createNewThread,
+  setActiveThread 
+} = useAppChat();
+
+// Use existing useAuthenticatedChatStore for complex operations
+const { submitFeedback } = useAuthenticatedChatStore();
+```
+
+#### UI Domain
+```typescript
+// ✅ Good - UI state management
+const theme = useAppSelector(store => store.theme.theme);
+const notifications = useAppSelector(store => store.notification.notifications);
+
+// Use app actions for UI operations
+appActions.toggleTheme();
+appActions.showSuccess('Title', 'Message');
+```
+
+@store-template.ts

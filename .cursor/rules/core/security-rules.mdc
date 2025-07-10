@@ -1,0 +1,75 @@
+# Security Rules
+
+## 🔴 Critical Security Standards
+
+### Data Protection Rules
+- **Never log sensitive data (passwords, tokens, personal info)**
+- **Sanitize user input before logging**
+- **Use structured logging format: timestamp, level, message, context**
+
+### Authentication Security
+- **Always validate user authentication before accessing protected resources**
+- **Use Firebase auth tokens for API authentication**
+- **Include user context in all authenticated operations**
+
+### Data Isolation
+- **Users can only access their own data**
+- **Filter all queries by authenticated user**
+- **Validate user ownership before modifications**
+
+### Security Examples
+```typescript
+// ✅ Good - sanitized logging
+logger.info('User login attempt', { 
+  userId: user.uid, 
+  email: user.email?.substring(0, 3) + '***' 
+});
+
+// ❌ Bad - sensitive data logged
+logger.info('User login', { 
+  password: userData.password,
+  token: authToken
+});
+
+// ✅ Good - user validation
+const validateUserAccess = (userId: string, resourceUserId: string) => {
+  if (userId !== resourceUserId) {
+    throw new AuthorizationError('Access denied');
+  }
+};
+
+// ✅ Good - data filtering
+const getUserThreads = (userId: string) => {
+  return threads.filter(thread => thread.userId === userId);
+};
+```
+
+### Input Sanitization
+```typescript
+// ✅ Good - sanitized input logging
+logger.info('Processing user input', {
+  userId: user.uid,
+  inputLength: userInput.length,
+  inputType: typeof userInput
+});
+
+// ❌ Bad - raw user input in logs
+logger.info('User input received', { input: userInput });
+```
+
+### Token Security
+```typescript
+// ✅ Good - token validation
+const validateToken = async (token: string) => {
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    return decodedToken;
+  } catch (error) {
+    logger.error('Token validation failed', error, { component: 'auth' });
+    throw new AuthenticationError('Invalid token');
+  }
+};
+
+// ❌ Bad - token in logs
+logger.info('Token received', { token: authToken });
+```

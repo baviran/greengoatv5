@@ -1,0 +1,214 @@
+# React Patterns & Best Practices
+
+## 🟢 React Development Standards
+
+### React Hook Dependency Management
+
+#### Safe useEffect Dependencies
+```typescript
+// ✅ Good - stable dependencies
+useEffect(() => {
+  const checkUserValidation = async () => {
+    // validation logic
+  };
+  
+  if (user && requireAuth && isInitialized) {
+    checkUserValidation();
+  }
+}, [user, requireAuth, isInitialized]); // Only include stable values
+
+// ❌ Bad - function in dependencies
+useEffect(() => {
+  if (user) {
+    getIdToken(); // Function recreated every render
+  }
+}, [user, getIdToken]); // Causes unnecessary re-runs
+```
+
+#### Performance-Critical Hooks
+```typescript
+// ✅ Good - avoid excessive API calls
+useEffect(() => {
+  const updateToken = async () => {
+    if (user) { // Only when user actually changes
+      const token = await getIdToken();
+      // Update token
+    }
+  };
+  updateToken();
+}, [user]); // Not [getIdToken]
+
+// ❌ Bad - function dependency causes re-runs
+useEffect(() => {
+  updateToken();
+}, [updateToken]); // Recreated every render
+```
+
+### Authentication Timing Issues
+```typescript
+// ✅ Good - wait for store initialization
+const { user, isLoading, isInitialized } = useAppAuth();
+
+useEffect(() => {
+  if (!isInitialized) {
+    setValidationStatus('loading');
+    return;
+  }
+  
+  if (user && requireAuth && isInitialized) {
+    validateUser();
+  }
+}, [user, requireAuth, isInitialized]);
+
+// ❌ Bad - immediate validation without waiting
+useEffect(() => {
+  if (user) {
+    validateUser(); // May run before Firebase is ready
+  }
+}, [user]);
+```
+
+### Cache Management Patterns
+
+#### User Validation Caching
+```typescript
+// ✅ Good - cache validation results
+const userValidationCache = new Map<string, {
+  status: UserValidationStatus;
+  error: string;
+  timestamp: number;
+}>();
+
+const VALIDATION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Check cache first
+const cached = userValidationCache.get(user.uid);
+if (cached && (Date.now() - cached.timestamp) < VALIDATION_CACHE_DURATION) {
+  setUserValidationStatus(cached.status);
+  return;
+}
+
+// ❌ Bad - repeated validation calls
+useEffect(() => {
+  validateUser(); // Runs every time
+}, [user]);
+```
+
+#### Cache Invalidation
+```typescript
+// ✅ Good - clear cache when user changes
+useEffect(() => {
+  if (user?.uid) {
+    userValidationCache.delete(user.uid);
+  }
+}, [user?.uid]);
+
+// ❌ Bad - stale cache data
+// No cache invalidation strategy
+```
+
+### Error Recovery Patterns
+
+#### Retry Logic for Authentication
+```typescript
+// ✅ Good - retry with backoff
+const getIdToken = async () => {
+  try {
+    const { auth } = await import('@/lib/firebase');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      return await currentUser.getIdToken(true);
+    }
+    return null;
+  } catch (error) {
+    // Retry once after delay
+    setTimeout(async () => {
+      try {
+        const retryToken = await currentUser?.getIdToken(true);
+        if (retryToken) {
+          return retryToken;
+        }
+      } catch (retryError) {
+        logger.error('Token retry failed', retryError);
+      }
+    }, 2000);
+    return null;
+  }
+};
+
+// ❌ Bad - no retry logic
+const getIdToken = async () => {
+  return auth.currentUser?.getIdToken(true);
+};
+```
+
+### Firebase Integration Patterns
+
+#### Authentication State Synchronization
+```typescript
+// ✅ Good - Firebase auth listener setup
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    authStore.getState().initialize();
+    
+    const setupFirebaseAuthListener = async () => {
+      const { auth } = await import('@/lib/firebase');
+      const { onAuthStateChanged } = await import('firebase/auth');
+      
+      onAuthStateChanged(auth, (firebaseUser) => {
+        const authState = authStore.getState();
+        if (firebaseUser) {
+          authState.setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            emailVerified: firebaseUser.emailVerified,
+            token: null
+          });
+        } else {
+          authState.setUser(null);
+        }
+      });
+    };
+    
+    setupFirebaseAuthListener();
+  }, 100);
+}
+
+// ❌ Bad - direct Firebase usage without store sync
+onAuthStateChanged(auth, (user) => {
+  // Manual state management without store
+});
+```
+
+### Component Composition Patterns
+```typescript
+// ✅ Good - component composition
+const ChatInterface: React.FC = () => {
+  const { user } = useAppAuth();
+  const { activeThreadId } = useAppChat();
+  
+  if (!user) {
+    return <AuthRequired />;
+  }
+  
+  return (
+    <div className="chat-interface">
+      <ChatHeader />
+      <MessageList threadId={activeThreadId} />
+      <MessageInput />
+    </div>
+  );
+};
+
+// ❌ Bad - monolithic component
+const ChatInterface: React.FC = () => {
+  // All logic in one component
+  return (
+    <div>
+      {/* All UI in one component */}
+    </div>
+  );
+};
+```
