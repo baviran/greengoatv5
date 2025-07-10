@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef} from 'react';
 import { Icon } from '@/app/components/icons';
-import {useAuthenticatedChatStore} from '../lib/store/chatStore';
+import { useAuthenticatedChatStore } from '../lib/store/chatStore';
 import FeedbackSection from './FeedbackSection';
 import { Logger } from '@/app/lib/utils/logger';
 import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuthContext } from '@/context/auth-context';
+import { useAppAuth } from '../lib/store/appStore';
 import { Logger } from '@/app/lib/utils/logger';
 import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';
 
@@ -10,7 +10,22 @@ const logger = Logger.getInstance().withContext({
 });
 
 const AdminPanelComponent: React.FC = () => {
-  const { user, getIdToken } = useAuthContext();
+  const { user } = useAppAuth();
+  
+  // Helper function to get auth token
+  const getIdToken = async () => {
+    try {
+      const { auth } = await import('@/lib/firebase');
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        return await currentUser.getIdToken(true);
+      }
+      return null;
+    } catch (error) {
+      logger.error('Error getting ID token', error);
+      return null;
+    }
+  };
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'user' | 'admin'>('user');
   const [loading, setLoading] = useState(false);

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuthContext } from '@/context/auth-context';
+import { useAppAuth } from '../../lib/store/appStore';
 import { SignInButton } from './SignInButton';
 import { Logger } from '@/app/lib/utils/logger';
 import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';
@@ -19,29 +19,137 @@ interface AuthGuardProps {
 
 type UserValidationStatus = 'loading' | 'valid' | 'invalid' | 'error';
 
+// Cache for user validation results to avoid repeated API calls
+const userValidationCache = new Map<string, {
+  status: UserValidationStatus;
+  error: string;
+  timestamp: number;
+}>();
+
+const VALIDATION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 const AuthGuardComponent: React.FC<AuthGuardProps> = ({ 
   children, 
   fallback,
   requireAuth = true,
   showAutoSignout = true
 }) => {
-  const { user, loading, signOut, getIdToken } = useAuthContext();
+  const { user, isLoading: loading, isInitialized } = useAppAuth();
+  
+  // Clear validation cache when user changes
+  React.useEffect(() => {
+    if (user?.uid) {
+      // Clear any cached validation errors for this user
+      userValidationCache.delete(user.uid);
+    }
+  }, [user?.uid]);
+  
+  // Helper functions for auth operations
+  const getIdToken = async () => {
+    try {
+      const { auth } = await import('@/lib/firebase');
+      const currentUser = auth.currentUser;
+      
+      logger.debug('Getting ID token', undefined, {
+        hasCurrentUser: !!currentUser,
+        currentUserUid: currentUser?.uid
+      });
+      
+      if (currentUser) {
+        const token = await currentUser.getIdToken(true);
+        logger.debug('ID token retrieved', undefined, {
+          hasToken: !!token,
+          tokenLength: token ? token.length : 0
+        });
+        return token;
+      }
+      
+      logger.debug('No current user for ID token');
+      return null;
+    } catch (error) {
+      logger.error('Error getting ID token', error);
+      return null;
+    }
+  };
+  
+  const signOut = async () => {
+    try {
+      const { auth } = await import('@/lib/firebase');
+      await auth.signOut();
+    } catch (error) {
+      logger.error('Error signing out', error);
+    }
+  };
   const [userValidationStatus, setUserValidationStatus] = useState<UserValidationStatus>('loading');
   const [validationError, setValidationError] = useState<string>('');
 
   // Check user validation in Firestore when user changes
   useEffect(() => {
     const checkUserValidation = async () => {
+      // Wait for auth store to be initialized before proceeding
+      if (!isInitialized) {
+        setUserValidationStatus('loading');
+        return;
+      }
+
       if (!user) {
         setUserValidationStatus('loading');
         return;
       }
 
+      // Check cache first
+      const cached = userValidationCache.get(user.uid);
+      if (cached && (Date.now() - cached.timestamp) < VALIDATION_CACHE_DURATION) {
+        setUserValidationStatus(cached.status);
+        setValidationError(cached.error);
+        return;
+      }
+
+      // Add a delay to allow Firebase auth to fully restore session
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       try {
         const token = await getIdToken();
         if (!token) {
-          setUserValidationStatus('error');
-          setValidationError('Failed to get authentication token');
+          // Retry once after a short delay
+          setTimeout(async () => {
+            try {
+              const retryToken = await getIdToken();
+              if (retryToken) {
+                // If we get a token on retry, try validation again
+                const retryResponse = await fetch('/api/user/validate', {
+                  headers: {
+                    'Authorization': `Bearer ${retryToken}`
+                  }
+                });
+                
+                if (retryResponse.ok) {
+                  const successResult = {
+                    status: 'valid' as UserValidationStatus,
+                    error: '',
+                    timestamp: Date.now()
+                  };
+                  userValidationCache.set(user.uid, successResult);
+                  setUserValidationStatus('valid');
+                  setValidationError('');
+                  return;
+                }
+              }
+            } catch (retryError) {
+              logger.error('Retry validation error', retryError);
+            }
+            
+            // If retry still fails, show error
+            const errorResult = {
+              status: 'error' as UserValidationStatus,
+              error: 'Failed to get authentication token',
+              timestamp: Date.now()
+            };
+            userValidationCache.set(user.uid, errorResult);
+            setUserValidationStatus('error');
+            setValidationError('Failed to get authentication token');
+          }, 2000); // Wait 2 seconds before retry
+          
           return;
         }
 
@@ -52,33 +160,64 @@ const AuthGuardComponent: React.FC<AuthGuardProps> = ({
           }
         });
 
+        let result: { status: UserValidationStatus; error: string; timestamp: number };
+
         if (response.ok) {
-          setUserValidationStatus('valid');
-          setValidationError('');
+          result = {
+            status: 'valid',
+            error: '',
+            timestamp: Date.now()
+          };
         } else if (response.status === 403) {
-          setUserValidationStatus('invalid');
-          setValidationError('Access denied: Your account is not authorized to use this application');
+          result = {
+            status: 'invalid',
+            error: 'Access denied: Your account is not authorized to use this application',
+            timestamp: Date.now()
+          };
         } else {
-          setUserValidationStatus('error');
-          setValidationError('Failed to validate user access');
+          result = {
+            status: 'error',
+            error: 'Failed to validate user access',
+            timestamp: Date.now()
+          };
         }
+
+        // Cache the result
+        userValidationCache.set(user.uid, result);
+        setUserValidationStatus(result.status);
+        setValidationError(result.error);
+
       } catch (error) {
         logger.error('User validation error', error, undefined, {
           userId: user?.uid,
           userEmail: user?.email,
           action: 'validate-user-access'
         });
+        
+        const errorResult = {
+          status: 'error' as UserValidationStatus,
+          error: 'Failed to validate user access',
+          timestamp: Date.now()
+        };
+        userValidationCache.set(user.uid, errorResult);
         setUserValidationStatus('error');
         setValidationError('Failed to validate user access');
       }
     };
 
-    if (user && requireAuth) {
-      checkUserValidation();
-    } else if (!user) {
+    if (user && requireAuth && isInitialized) {
+      // Check cache and show cached result immediately if valid
+      const cached = userValidationCache.get(user.uid);
+      if (cached && (Date.now() - cached.timestamp) < VALIDATION_CACHE_DURATION) {
+        setUserValidationStatus(cached.status);
+        setValidationError(cached.error);
+      } else {
+        checkUserValidation();
+      }
+    } else if (!user || !isInitialized) {
       setUserValidationStatus('loading');
     }
-  }, [user, requireAuth, getIdToken]);
+  }, [user, requireAuth, isInitialized]); // Added isInitialized to dependencies
 
   const handleSignOut = async () => {
     try {

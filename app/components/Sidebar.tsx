@@ -2,7 +2,7 @@ import React from 'react';
 import { Icon } from '@/app/components/icons';
 import { assistantData } from './chatAppHelpersAndData';
 import { useAuthenticatedChatStore } from '../lib/store/chatStore';
-import { useAuthContext } from '@/context/auth-context';
+import { useAppAuth } from '../lib/store/appStore';
 import { AuthGuard } from './auth/AuthGuard';
 
 const Sidebar: React.FC = () => {
@@ -15,7 +15,7 @@ const Sidebar: React.FC = () => {
         isLoading
     } = useAuthenticatedChatStore();
     
-    const { user } = useAuthContext();
+    const { user } = useAppAuth();
 
     const handleThreadSelect = (threadId: string) => setActiveThread(threadId);
     

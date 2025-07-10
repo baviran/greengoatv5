@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useAuthContext } from '@/context/auth-context';
+import { useAppAuth } from '../../lib/store/appStore';
 import { Icon } from '@/app/components/icons';
+import { UserProfile } from './UserProfile';
 
 interface SignInButtonProps {
   className?: string;
@@ -13,7 +14,25 @@ export const SignInButton: React.FC<SignInButtonProps> = ({
   className = '', 
   variant = 'default' 
 }) => {
-  const { signInWithGoogle, loading, error } = useAuthContext();
+  const { user, isAuthenticated, isLoading: loading, error } = useAppAuth();
+
+  // If user is authenticated, show their profile instead
+  if (isAuthenticated && user) {
+    return <UserProfile className={className} />;
+  }
+  
+  // Helper function for Google sign in
+  const signInWithGoogle = async () => {
+    try {
+      const { auth } = await import('@/lib/firebase');
+      const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
+      
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+    }
+  };
 
   const baseStyles = "flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors";
   const variantStyles = {

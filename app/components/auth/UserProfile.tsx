@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { useAuthContext } from '@/context/auth-context';
+import { useAppAuth } from '../../lib/store/appStore';
 
 interface UserProfileProps {
   className?: string;
@@ -13,7 +13,17 @@ export const UserProfile: React.FC<UserProfileProps> = ({
   className = '', 
   showFullProfile = false 
 }) => {
-  const { user, signOut, loading } = useAuthContext();
+  const { user, isLoading: loading } = useAppAuth();
+  
+  // Helper function for sign out
+  const signOut = async () => {
+    try {
+      const { auth } = await import('@/lib/firebase');
+      await auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
   const [showDropdown, setShowDropdown] = useState(false);
 
   if (!user) return null;

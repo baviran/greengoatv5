@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { useAuthContext } from '@/context/auth-context';
+import { useAppAuth } from '../lib/store/appStore';
 import { SignInButton } from './auth/SignInButton';
 import { UserProfile } from './auth/UserProfile';
 
 const TopBar: React.FC = () => {
-    const { user, loading } = useAuthContext();
+    const { user, isLoading: loading } = useAppAuth();
 
     return (
         <div className="fixed top-0 left-0 right-0 h-16 bg-card border-b border-border flex items-center justify-between px-4 sm:px-6 z-50">

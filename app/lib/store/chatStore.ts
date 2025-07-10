@@ -121,7 +121,7 @@ interface ChatActions {
   getUserThreads: () => Thread[];
 }
 
-type ChatStore = ChatState & ChatActions;
+export type ChatStore = ChatState & ChatActions;
 
 const DEFAULT_ASSISTANT_ID = "asst_4OCphfGQ5emHha8ERVPYOjl6";
 
@@ -217,6 +217,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   setActiveThread: (threadId: string | null) => {
+    const state = get();
+    
+    logger.info('Setting active thread', undefined, {
+      userId: state.userContext?.uid,
+      newActiveThreadId: threadId,
+      previousActiveThreadId: state.activeThreadId,
+      hasExistingMessages: threadId ? !!state.messagesByThread[threadId] : false,
+      willLoadMessages: threadId && !state.messagesByThread[threadId]
+    });
+    
     set({ activeThreadId: threadId, error: null });
 
     if (threadId && !get().messagesByThread[threadId]) {
@@ -348,7 +358,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
 
       const data = await response.json();
-      const realThreadId = data.threadId;
+      const realThreadId = data.data?.threadId || data.threadId;
       
       if (!realThreadId) {
         throw new Error('No thread ID returned from OpenAI');
@@ -453,12 +463,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
       
       const data = await response.json();
-      const messages = data.messages;
+      const messages = data.data?.messages || data.messages;
       const state = get();
       const userContext = state.userContext;
       
-      // Add user context to loaded messages
-      const messagesWithUser = messages.map((message: Message) => ({
+
+      
+      // Add user context to messages
+      const messagesWithUser = messages.map((message: any) => ({
         ...message,
         userId: userContext?.uid,
         userEmail: userContext?.email
@@ -474,7 +486,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       logger.info('Messages loaded for thread', undefined, {
         userId: userContext?.uid,
         threadId: threadId,
-        messagesCount: messages.length
+        messagesCount: messages.length,
+        transformedMessagesCount: messagesWithUser.length
       });
       
     } catch (error) {
@@ -534,7 +547,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         throw new Error(errorData.error || 'Failed to send message');
       }
 
-      const { response: assistantResponse, threadId: returnedThreadId, runId } = await response.json();
+      const responseData = await response.json();
+      const assistantResponse = responseData.data?.response || responseData.response;
+      const returnedThreadId = responseData.data?.threadId || responseData.threadId;
+      const runId = responseData.data?.runId || responseData.runId;
 
       if (returnedThreadId && returnedThreadId !== targetThreadId) {
         set(state => ({
@@ -702,16 +718,20 @@ export const useAuthenticatedChatStore = () => {
   const { user, getIdToken } = useAuthContext();
   const store = useChatStore();
 
-  // Update the global auth token whenever it changes
+
+
+  // Update the global auth token whenever user changes
   React.useEffect(() => {
     const updateToken = async () => {
-      const token = await getIdToken();
-      if (typeof window !== 'undefined') {
-        (window as any).__authToken = token;
+      if (user) {
+        const token = await getIdToken();
+        if (typeof window !== 'undefined') {
+          (window as any).__authToken = token;
+        }
       }
     };
     updateToken();
-  }, [getIdToken]);
+  }, [user, getIdToken]); // Include getIdToken in dependencies
 
   // Update user context when user changes
   React.useEffect(() => {

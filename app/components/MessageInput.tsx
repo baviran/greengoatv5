@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '@/app/components/icons';
 import { useAuthenticatedChatStore } from '../lib/store/chatStore';
-import { useAuthContext } from '@/context/auth-context';
+import { useAppAuth } from '../lib/store/appStore';
 import { AuthGuard } from './auth/AuthGuard';
 import { Logger } from '@/app/lib/utils/logger';
 import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';
@@ -12,7 +12,7 @@ const logger = Logger.getInstance().withContext({
 
 const MessageInputComponent: React.FC = () => {
     const { sendMessage, isLoading, isSending } = useAuthenticatedChatStore();
-    const { user } = useAuthContext();
+    const { user } = useAppAuth();
     const [message, setMessage] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     
