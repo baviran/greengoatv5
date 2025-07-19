@@ -10,8 +10,6 @@ export const HTTP_STATUS = {
   
   // Client Errors
   BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
   UNPROCESSABLE_ENTITY: 422,
@@ -36,12 +34,6 @@ export interface PaginationInfo {
 
 // Error codes for consistent error handling
 export const ERROR_CODES = {
-  // Authentication & Authorization
-  UNAUTHENTICATED: 'UNAUTHENTICATED',
-  UNAUTHORIZED: 'UNAUTHORIZED',
-  TOKEN_EXPIRED: 'TOKEN_EXPIRED',
-  INVALID_TOKEN: 'INVALID_TOKEN',
-  
   // Validation
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   MISSING_REQUIRED_FIELDS: 'MISSING_REQUIRED_FIELDS',
@@ -62,7 +54,6 @@ export const ERROR_CODES = {
   EXTERNAL_SERVICE_ERROR: 'EXTERNAL_SERVICE_ERROR',
   OPENAI_ERROR: 'OPENAI_ERROR',
   AIRTABLE_ERROR: 'AIRTABLE_ERROR',
-  FIREBASE_ERROR: 'FIREBASE_ERROR',
 } as const;
 
 export type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];
@@ -94,8 +85,6 @@ export interface ApiResponse<T = any> {
 // Context interface for request tracking
 export interface RequestContext {
   requestId: string;
-  userId?: string;
-  userEmail?: string;
   component: string;
   action: string;
   startTime?: number;
@@ -206,38 +195,6 @@ export class ApiResponseBuilder {
   }
   
   /**
-   * Create an unauthorized error response
-   */
-  static unauthorized(
-    message: string = 'Authentication required',
-    context: RequestContext,
-    details?: any
-  ): ApiResponse {
-    return this.error(
-      ERROR_CODES.UNAUTHENTICATED,
-      message,
-      context,
-      details
-    );
-  }
-  
-  /**
-   * Create a forbidden error response
-   */
-  static forbidden(
-    message: string = 'Access denied',
-    context: RequestContext,
-    details?: any
-  ): ApiResponse {
-    return this.error(
-      ERROR_CODES.UNAUTHORIZED,
-      message,
-      context,
-      details
-    );
-  }
-  
-  /**
    * Create a not found error response
    */
   static notFound(
@@ -306,8 +263,6 @@ export class ApiResponseBuilder {
    */
   private static extractLogContext(context: RequestContext) {
     return {
-      userId: context.userId,
-      userEmail: context.userEmail,
       component: context.component,
       action: context.action,
       requestId: context.requestId
@@ -340,14 +295,10 @@ export function generateRequestId(): string {
 export function createRequestContext(
   component: string,
   action: string,
-  userId?: string,
-  userEmail?: string,
   requestId?: string
 ): RequestContext {
   return {
     requestId: requestId || generateRequestId(),
-    userId,
-    userEmail,
     component,
     action,
     startTime: Date.now()

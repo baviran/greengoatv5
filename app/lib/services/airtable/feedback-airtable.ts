@@ -1,5 +1,5 @@
 import { AirtableService } from '@/app/lib/services/airtable/airtable-service';
-import { UserContext } from '@/app/types/chat';
+// UserContext removed - public app
 import { Logger } from '@/app/lib/utils/logger';
 
 const logger = Logger.getInstance();
@@ -42,7 +42,6 @@ export class FeedbackService {
         runId: string,
         userPrompt: string,
         assistantResponse: string,
-        userContext?: UserContext,
         toolCalls?: any,
         toolOutputs?: any,
         rating?: '👍' | '👎' | null,
@@ -52,17 +51,17 @@ export class FeedbackService {
             logger.info(`📝 LOGGING USER INTERACTION`);
             logger.info(`🔗 Thread ID: ${threadId}`);
             logger.info(`🏃 Run ID: ${runId}`);
-            logger.info(`👤 User ID: ${userContext?.uid || 'anonymous'}`);
-            logger.info(`📧 User Email: ${userContext?.email || 'N/A'}`);
+            logger.info(`👤 User ID: anonymous`);
+            logger.info(`📧 User Email: N/A`);
             logger.info(`💬 User Prompt Length: ${userPrompt.length} chars`);
             logger.info(`🤖 Assistant Response Length: ${assistantResponse.length} chars`);
             
             const result = await this.airtableService.logAssistantInteraction({
                 threadId,
                 runId,
-                userId: userContext?.uid,
-                userEmail: userContext?.email,
-                userDisplayName: userContext?.displayName,
+                userId: undefined,
+                userEmail: undefined,
+                userDisplayName: undefined,
                 userPrompt,
                 assistantResponse,
                 toolCalls,
@@ -70,7 +69,7 @@ export class FeedbackService {
                 rating,
                 comment,
                 timestamp: new Date().toISOString(),
-                sessionId: `${userContext?.uid || 'anonymous'}_${Date.now()}`
+                sessionId: `anonymous_${Date.now()}`
             });
             
             logger.info(`✅ User interaction logged successfully`);
@@ -171,8 +170,7 @@ export class FeedbackService {
             const updateData = {
                 'Rating': rating,
                 'QA Comment': comment || '',
-                'Reviewed By': existingRecord['User Email'] || userId || 'anonymous',
-                'Timestamp': new Date().toISOString()
+                'Reviewed By': existingRecord['User Email'] || userId || 'anonymous'
             };
 
             const result = await this.airtableService.updateRecord(

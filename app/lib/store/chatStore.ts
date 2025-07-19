@@ -1,93 +1,104 @@
 import React from "react";
 import { create } from "zustand";
-import { Message, Thread, UserContext } from "@/app/types/chat";
-import { useAuthContext } from "@/context/auth-context";
+import { Message, Thread } from "@/app/types/chat";
 import { Logger } from "@/app/lib/utils/logger";
 
 const logger = Logger.getInstance().withContext({
   component: 'chat-store'
 });
 
-// localStorage keys
-const THREADS_STORAGE_KEY = 'chat_threads_v2'; // Incremented version for user-specific storage
+// Local storage keys
+const STORAGE_KEY_PREFIX = "greengoat_chat_";
+const STORAGE_VERSION = "v2";
 
-// Helper functions for localStorage - now user-specific
-const getStoredThreads = (assistantId: string, userId?: string): Thread[] => {
-  if (typeof window === 'undefined' || !userId) return [];
-  try {
-    const stored = localStorage.getItem(`${THREADS_STORAGE_KEY}_${assistantId}_${userId}`);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    logger.error('Error parsing stored threads', error, undefined, {
-      assistantId,
-      userId,
-      storageKey: `${THREADS_STORAGE_KEY}_${assistantId}_${userId}`
-    });
-    return [];
-  }
+// Storage interfaces
+interface StoredChatData {
+  threads: Thread[];
+  lastUpdated: number;
+}
+
+// Helper functions for local storage
+const getStorageKey = (assistantId: string) => {
+  return `${STORAGE_KEY_PREFIX}${assistantId}_${STORAGE_VERSION}`;
 };
 
-const saveThreadsToStorage = (assistantId: string, threads: Thread[], userId?: string) => {
-  if (typeof window === 'undefined' || !userId) return;
+const getStoredThreads = (assistantId: string): Thread[] => {
+  if (typeof window === 'undefined') return [];
+  
   try {
-    localStorage.setItem(`${THREADS_STORAGE_KEY}_${assistantId}_${userId}`, JSON.stringify(threads));
-  } catch (error) {
-    logger.error('Error saving threads to localStorage', error, undefined, {
-      assistantId,
-      userId,
-      threadsCount: threads.length,
-      storageKey: `${THREADS_STORAGE_KEY}_${assistantId}_${userId}`
-    });
-  }
-};
-
-// Helper function to clear old localStorage entries when user changes
-const clearOldStorage = () => {
-  if (typeof window === 'undefined') return;
-  try {
-    const keys = Object.keys(localStorage);
-    const removedKeys: string[] = [];
-    keys.forEach(key => {
-      if (key.startsWith('chat_threads_v1_')) {
-        localStorage.removeItem(key);
-        removedKeys.push(key);
-      }
-    });
-    if (removedKeys.length > 0) {
-      logger.debug('Cleared old storage keys', undefined, {
-        removedKeys,
-        count: removedKeys.length
-      });
+    const key = getStorageKey(assistantId);
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const data: StoredChatData = JSON.parse(stored);
+      return data.threads || [];
     }
   } catch (error) {
-    logger.error('Error clearing old storage', error);
+    logger.error('Failed to load threads from storage', error);
+  }
+  return [];
+};
+
+const storeThreads = (assistantId: string, threads: Thread[]) => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const key = getStorageKey(assistantId);
+    const data: StoredChatData = {
+      threads,
+      lastUpdated: Date.now()
+    };
+    localStorage.setItem(key, JSON.stringify(data));
+    logger.debug('Threads stored successfully', undefined, {
+      assistantId,
+      threadCount: threads.length
+    });
+  } catch (error) {
+    logger.error('Failed to store threads', error);
   }
 };
 
+const clearOldStorage = () => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('greengoat_chat_') && !key.includes('_v2')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    if (keysToRemove.length > 0) {
+      logger.info('Cleared old storage format', undefined, { removedKeys: keysToRemove.length });
+    }
+  } catch (error) {
+    logger.error('Failed to clear old storage', error);
+  }
+};
+
+// Store interfaces
 interface ChatState {
-  // Messages organized by thread ID
+  // Thread and message data
   messagesByThread: Record<string, Message[]>;
-  // Currently active thread
   activeThreadId: string | null;
-  // Available threads (filtered by user)
   threads: Thread[];
-  // Loading states
+  
+  // UI state
   isLoading: boolean;
   isSending: boolean;
-  // Default assistant ID
-  defaultAssistantId: string;
-  // Error state
   error: string | null;
+  
+  // Configuration
+  defaultAssistantId: string;
+  
   // Initialization state
   isInitialized: boolean;
-  // User context
-  userContext: UserContext | null;
 }
 
 interface ChatActions {
   // Initialization
-  initializeStore: (userContext?: UserContext | null) => void;
-  setUserContext: (userContext: UserContext | null) => void;
+  initializeStore: () => void;
   
   // Thread management
   setActiveThread: (threadId: string | null) => void;
@@ -100,56 +111,25 @@ interface ChatActions {
   addMessage: (threadId: string, message: Message) => void;
   getMessagesForThread: (threadId: string) => Message[];
   loadMessagesForThread: (threadId: string) => Promise<void>;
+  sendMessage: (content: string, threadId?: string) => Promise<void>;
   
-  // Chat interactions
-  sendMessage: (message: string, threadId?: string) => Promise<void>;
+  // UI state management
+  setIsLoading: (isLoading: boolean) => void;
+  setIsSending: (isSending: boolean) => void;
+  setError: (error: string | null) => void;
   
   // Feedback
-  submitFeedback: (messageId: string, runId: string, threadId: string, rating: 'like' | 'dislike', comment?: string) => Promise<void>;
-  
-  // Loading and error states
-  setLoading: (loading: boolean) => void;
-  setSending: (sending: boolean) => void;
-  setError: (error: string | null) => void;
+  submitFeedback: (messageId: string, thumbsUp: boolean, comment?: string) => Promise<void>;
   
   // Utility
   clearChat: () => void;
   syncWithLocalStorage: () => void;
-  
-  // User-specific data management
-  clearUserData: () => void;
   getUserThreads: () => Thread[];
 }
 
 export type ChatStore = ChatState & ChatActions;
 
 const DEFAULT_ASSISTANT_ID = "asst_4OCphfGQ5emHha8ERVPYOjl6";
-
-// Helper function to get auth token
-const getAuthToken = async (): Promise<string | null> => {
-  // Import Firebase auth directly to get the current user's token
-  if (typeof window !== 'undefined') {
-    try {
-      // First try to get from global variable set by auth hook
-      const globalToken = (window as any).__authToken;
-      if (globalToken) {
-        return globalToken;
-      }
-      
-      // Fallback to Firebase auth
-      const { auth } = await import('@/lib/firebase');
-      const user = auth.currentUser;
-      if (user) {
-        return await user.getIdToken(true);
-      }
-    } catch (error) {
-      logger.error('Error getting auth token', error, undefined, {
-        hasWindow: typeof window !== 'undefined'
-      });
-    }
-  }
-  return null;
-};
 
 export const useChatStore = create<ChatStore>((set, get) => ({
   // Initial state
@@ -161,234 +141,127 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   defaultAssistantId: DEFAULT_ASSISTANT_ID,
   error: null,
   isInitialized: false,
-  userContext: null,
 
   // Initialization
-  initializeStore: (userContext?: UserContext | null) => {
-    if (get().isInitialized && get().userContext?.uid === userContext?.uid) return;
+  initializeStore: () => {
+    if (get().isInitialized) return;
     
-    logger.info('Initializing chat store', undefined, {
-      userId: userContext?.uid,
-      userEmail: userContext?.email,
-      isReinitialization: get().isInitialized
-    });
+    logger.info('Initializing chat store');
     
     // Clear old storage format
     clearOldStorage();
     
     const state = get();
-    const storedThreads = getStoredThreads(state.defaultAssistantId, userContext?.uid);
-    
-    // Filter threads to only show user's threads
-    const userThreads = storedThreads.filter(thread => 
-      !userContext || !thread.userId || thread.userId === userContext.uid
-    );
+    const storedThreads = getStoredThreads(state.defaultAssistantId);
     
     set({
-      threads: userThreads,
+      threads: storedThreads,
       messagesByThread: {},
-      isInitialized: true,
-      userContext: userContext || null
+      isInitialized: true
     });
 
     logger.info('Chat store initialized successfully', undefined, {
-      userId: userContext?.uid,
-      threadsLoaded: userThreads.length,
-      hasActiveThread: userThreads.length > 0
+      threadsLoaded: storedThreads.length,
+      hasActiveThread: storedThreads.length > 0
     });
-
-    if (userThreads.length > 0) {
-      get().setActiveThread(userThreads[0].id);
-    }
   },
 
-  setUserContext: (userContext: UserContext | null) => {
-    const currentUser = get().userContext;
-    if (currentUser?.uid === userContext?.uid) return;
-    
-    logger.info('Setting user context', undefined, {
-      previousUserId: currentUser?.uid,
-      newUserId: userContext?.uid,
-      isUserChange: currentUser?.uid !== userContext?.uid
-    });
-    
-    // Clear current data when user changes
-    if (currentUser?.uid !== userContext?.uid) {
-      get().clearUserData();
-    }
-    
-    set({ userContext });
-    
-    // Reinitialize with new user context
-    get().initializeStore(userContext);
-  },
-
+  // Thread management
   setActiveThread: (threadId: string | null) => {
-    const state = get();
-    
-    logger.info('Setting active thread', undefined, {
-      userId: state.userContext?.uid,
-      newActiveThreadId: threadId,
-      previousActiveThreadId: state.activeThreadId,
-      hasExistingMessages: threadId ? !!state.messagesByThread[threadId] : false,
-      willLoadMessages: threadId && !state.messagesByThread[threadId]
-    });
-    
+    logger.debug('Setting active thread', undefined, { threadId });
     set({ activeThreadId: threadId, error: null });
-
-    if (threadId && !get().messagesByThread[threadId]) {
+    
+    if (threadId) {
       get().loadMessagesForThread(threadId);
     }
   },
 
   addThread: (thread: Thread) => {
+    const threads = [thread, ...get().threads];
+    set({ threads });
+    
     const state = get();
-    const userContext = state.userContext;
+    storeThreads(state.defaultAssistantId, threads);
     
-    // Add user context to thread
-    const threadWithUser: Thread = {
-      ...thread,
-      userId: userContext?.uid,
-      userEmail: userContext?.email,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    const newThreads = [threadWithUser, ...state.threads];
-    
-    set({
-      threads: newThreads,
-      messagesByThread: {
-        ...state.messagesByThread,
-        [thread.id]: []
-      }
-    });
-    
-    // Save to localStorage with user context
-    saveThreadsToStorage(state.defaultAssistantId, newThreads, userContext?.uid);
-    
-    logger.info('Thread added successfully', undefined, {
-      userId: userContext?.uid,
+    logger.info('Thread added', undefined, {
       threadId: thread.id,
-      threadTitle: thread.title,
-      totalThreads: newThreads.length
+      title: thread.title,
+      totalThreads: threads.length
     });
   },
 
   updateThread: (threadId: string, updates: Partial<Thread>) => {
-    const state = get();
-    const userContext = state.userContext;
-    
-    const updatedThreads = state.threads.map(thread =>
-      thread.id === threadId ? { 
-        ...thread, 
-        ...updates, 
-        updatedAt: new Date().toISOString() 
-      } : thread
+    const threads = get().threads.map(thread => 
+      thread.id === threadId ? { ...thread, ...updates } : thread
     );
+    set({ threads });
     
-    set({ threads: updatedThreads });
-    saveThreadsToStorage(state.defaultAssistantId, updatedThreads, userContext?.uid);
+    const state = get();
+    storeThreads(state.defaultAssistantId, threads);
     
-    logger.info('Thread updated successfully', undefined, {
-      userId: userContext?.uid,
-      threadId: threadId,
-      updates: Object.keys(updates)
-    });
+    logger.debug('Thread updated', undefined, { threadId, updates });
   },
 
   deleteThread: (threadId: string) => {
+    const threads = get().threads.filter(thread => thread.id !== threadId);
+    const messagesByThread = { ...get().messagesByThread };
+    delete messagesByThread[threadId];
+    
+    set({ 
+      threads, 
+      messagesByThread,
+      activeThreadId: get().activeThreadId === threadId ? null : get().activeThreadId
+    });
+    
     const state = get();
-    const userContext = state.userContext;
+    storeThreads(state.defaultAssistantId, threads);
     
-    // Only allow deletion of user's own threads
-    const threadToDelete = state.threads.find(t => t.id === threadId);
-    if (threadToDelete && threadToDelete.userId && threadToDelete.userId !== userContext?.uid) {
-      logger.warn('User attempted to delete thread belonging to another user', undefined, {
-        userId: userContext?.uid,
-        threadId: threadId,
-        threadOwnerId: threadToDelete.userId
-      });
-      return;
-    }
-    
-    const newThreads = state.threads.filter(thread => thread.id !== threadId);
-    const newMessagesByThread = { ...state.messagesByThread };
-    delete newMessagesByThread[threadId];
-    
-    set({
-      threads: newThreads,
-      messagesByThread: newMessagesByThread,
-      activeThreadId: state.activeThreadId === threadId ? 
-        (newThreads.length > 0 ? newThreads[0].id : null) : state.activeThreadId
-    });
-    
-    // Save to localStorage
-    saveThreadsToStorage(state.defaultAssistantId, newThreads, userContext?.uid);
-    
-    logger.info('Thread deleted successfully', undefined, {
-      userId: userContext?.uid,
-      threadId: threadId,
-      remainingThreads: newThreads.length,
-      newActiveThread: state.activeThreadId === threadId ? 
-        (newThreads.length > 0 ? newThreads[0].id : null) : state.activeThreadId
-    });
+    logger.info('Thread deleted', undefined, { threadId, remainingThreads: threads.length });
   },
 
   createNewThread: async (title?: string): Promise<string> => {
     try {
       set({ isLoading: true, error: null });
       
-      const token = await getAuthToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      // Create thread on OpenAI first
       const response = await fetch('/api/threads/create', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
+          title: title || 'New Conversation',
           assistantId: get().defaultAssistantId
-        }),
+        })
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('אנא התחבר כדי ליצור שיחה חדשה');
-        }
-        throw new Error('Failed to create thread on OpenAI');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      const realThreadId = data.data?.threadId || data.threadId;
       
-      if (!realThreadId) {
-        throw new Error('No thread ID returned from OpenAI');
+      if (!data.success || !data.data?.threadId) {
+        throw new Error(data.error?.message || 'Failed to create thread');
       }
 
-      // Now create the thread in our local store with the real OpenAI thread ID
       const newThread: Thread = {
-        id: realThreadId,
-        title: title || `שיחה חדשה`
+        id: data.data.threadId,
+        title: title || 'New Conversation',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
-      
+
       get().addThread(newThread);
-      get().setActiveThread(realThreadId);
       
-      return realThreadId;
-      
-    } catch (error) {
-      logger.error('Error creating new thread', error, undefined, {
-        userId: get().userContext?.uid,
-        assistantId: get().defaultAssistantId,
-        title: title
+      logger.info('Thread created successfully', undefined, {
+        threadId: newThread.id,
+        title: newThread.title
       });
-      set({ error: error instanceof Error ? error.message : 'Failed to create thread' });
+
+      return newThread.id;
+    } catch (error) {
+      logger.error('Failed to create thread', error);
+      set({ error: 'Failed to create new conversation' });
       throw error;
     } finally {
       set({ isLoading: false });
@@ -397,286 +270,209 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   // Message management
   addMessage: (threadId: string, message: Message) => {
-    const state = get();
-    const userContext = state.userContext;
-    const currentMessages = state.messagesByThread[threadId] || [];
-    
-    // Add user context to message
-    const messageWithUser: Message = {
-      ...message,
-      userId: userContext?.uid,
-      userEmail: userContext?.email
-    };
-    
-    const updatedMessagesByThread = {
-      ...state.messagesByThread,
-      [threadId]: [...currentMessages, messageWithUser]
-    };
-
-    set({ messagesByThread: updatedMessagesByThread });
-    
-    // Update thread title if it's a new thread with generic name and this is the first user message
-    if (message.sender === 'user' && currentMessages.length === 0) {
-      const thread = state.threads.find(t => t.id === threadId);
-      if (thread && (thread.title.startsWith('New Chat') || thread.title === 'שיחה חדשה')) {
-        get().updateThread(threadId, { 
-          title: message.text.slice(0, 50) + (message.text.length > 50 ? '...' : '') 
-        });
-      }
+    const messagesByThread = { ...get().messagesByThread };
+    if (!messagesByThread[threadId]) {
+      messagesByThread[threadId] = [];
     }
+    messagesByThread[threadId] = [...messagesByThread[threadId], message];
+    set({ messagesByThread });
     
-    logger.info('Message added to thread', undefined, {
-      userId: userContext?.uid,
-      threadId: threadId,
-      messageSender: message.sender,
-      messageLength: message.text.length,
-      totalMessages: updatedMessagesByThread[threadId].length
-    });
+         logger.debug('Message added', undefined, {
+       threadId,
+       messageId: message.id,
+       sender: message.sender
+     });
   },
 
-  getMessagesForThread: (threadId: string) => {
-    const state = get();
-    const userContext = state.userContext;
-    const messages = state.messagesByThread[threadId] || [];
-    
-    // Filter messages to only show user's messages (extra security)
-    return messages.filter(message => 
-      !userContext || !message.userId || message.userId === userContext.uid
-    );
+  getMessagesForThread: (threadId: string): Message[] => {
+    return get().messagesByThread[threadId] || [];
   },
 
-  loadMessagesForThread: async (threadId: string) => {
+  loadMessagesForThread: async (threadId: string): Promise<void> => {
+    if (get().messagesByThread[threadId]) {
+      return; // Already loaded
+    }
+
     try {
       set({ isLoading: true, error: null });
       
-      const token = await getAuthToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
       const response = await fetch(`/api/threads/${threadId}/messages`, {
-        headers,
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('אנא התחבר כדי לטעון הודעות');
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
         }
-        throw new Error(`Failed to fetch messages: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const messages = data.data?.messages || data.messages;
-      const state = get();
-      const userContext = state.userContext;
-      
-
-      
-      // Add user context to messages
-      const messagesWithUser = messages.map((message: any) => ({
-        ...message,
-        userId: userContext?.uid,
-        userEmail: userContext?.email
-      }));
-      
-      const updatedMessagesByThread = {
-        ...state.messagesByThread,
-        [threadId]: messagesWithUser
-      };
-      
-      set({ messagesByThread: updatedMessagesByThread });
-      
-      logger.info('Messages loaded for thread', undefined, {
-        userId: userContext?.uid,
-        threadId: threadId,
-        messagesCount: messages.length,
-        transformedMessagesCount: messagesWithUser.length
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       
+      if (!data.success) {
+        throw new Error(data.error?.message || 'Failed to load messages');
+      }
+
+      const messages = data.data?.messages || [];
+      const messagesByThread = { ...get().messagesByThread };
+      messagesByThread[threadId] = messages;
+      set({ messagesByThread });
+
+      logger.info('Messages loaded for thread', undefined, {
+        threadId,
+        messageCount: messages.length
+      });
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to load messages' });
+      logger.error('Failed to load messages for thread', error, undefined, { threadId });
+      set({ error: 'Failed to load messages' });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  sendMessage: async (message: string, threadId?: string) => {
-    const state = get();
-    const userContext = state.userContext;
-    let targetThreadId = threadId || state.activeThreadId;
-
+  sendMessage: async (content: string, threadId?: string): Promise<void> => {
     try {
       set({ isSending: true, error: null });
+
+      let currentThreadId = threadId || get().activeThreadId;
       
-      if (!targetThreadId) {
-        targetThreadId = await get().createNewThread();
-      }
-      
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        threadId: targetThreadId,
-        sender: 'user',
-        text: message,
-        timestamp: new Date().toISOString(),
-        userId: userContext?.uid,
-        userEmail: userContext?.email
-      };
-      get().addMessage(targetThreadId, userMessage);
-      
-      const token = await getAuthToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      // Create new thread if none exists
+      if (!currentThreadId) {
+        currentThreadId = await get().createNewThread();
+        get().setActiveThread(currentThreadId);
       }
 
+             // Add user message immediately
+       const userMessage: Message = {
+         id: `user_${Date.now()}`,
+         sender: 'user',
+         text: content,
+         timestamp: new Date().toISOString(),
+         threadId: currentThreadId
+       };
+      
+      get().addMessage(currentThreadId, userMessage);
+
+      // Send to API
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          message,
-          threadId: targetThreadId,
-          assistantId: state.defaultAssistantId,
-        }),
+          message: content,
+          threadId: currentThreadId,
+          assistantId: get().defaultAssistantId
+        })
       });
-      
+
       if (!response.ok) {
-        const errorData = await response.json();
-        if (response.status === 401) {
-          throw new Error('אנא התחבר כדי לשלוח הודעות');
-        }
-        throw new Error(errorData.error || 'Failed to send message');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const responseData = await response.json();
-      const assistantResponse = responseData.data?.response || responseData.response;
-      const returnedThreadId = responseData.data?.threadId || responseData.threadId;
-      const runId = responseData.data?.runId || responseData.runId;
-
-      if (returnedThreadId && returnedThreadId !== targetThreadId) {
-        set(state => ({
-          ...state,
-          activeThreadId: returnedThreadId,
-        }));
-
-        const updatedThreads = state.threads.map(thread => 
-          thread.id === targetThreadId ? { ...thread, id: returnedThreadId } : thread
-        );
-
-        const updatedMessagesByThread = { ...state.messagesByThread };
-        if (targetThreadId && state.messagesByThread[targetThreadId]) {
-          updatedMessagesByThread[returnedThreadId] = state.messagesByThread[targetThreadId];
-          delete updatedMessagesByThread[targetThreadId];
-        }
-        
-        set(state => ({
-          ...state,
-          threads: updatedThreads,
-          messagesByThread: updatedMessagesByThread,
-        }));
-        
-        targetThreadId = returnedThreadId;
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error?.message || 'Failed to send message');
       }
 
-      if (assistantResponse && targetThreadId) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          threadId: targetThreadId,
-          runId,
-          sender: 'assistant',
-          text: assistantResponse,
-          timestamp: new Date().toISOString(),
-          userId: userContext?.uid,
-          userEmail: userContext?.email
-        };
-        get().addMessage(targetThreadId, assistantMessage);
+             // Add assistant response
+       if (data.data?.response) {
+         const assistantMessage: Message = {
+           id: `assistant_${Date.now()}`,
+           sender: 'assistant', 
+           text: data.data.response,
+           timestamp: new Date().toISOString(),
+           threadId: currentThreadId,
+           runId: data.data.runId
+         };
+        
+        get().addMessage(currentThreadId, assistantMessage);
+      }
+
+      // Update thread title if this was the first message
+      const thread = get().threads.find(t => t.id === currentThreadId);
+      if (thread && thread.title === 'New Conversation') {
+        const newTitle = content.slice(0, 50) + (content.length > 50 ? '...' : '');
+        get().updateThread(currentThreadId, { title: newTitle });
       }
 
       logger.info('Message sent successfully', undefined, {
-        userId: userContext?.uid,
-        targetThreadId: targetThreadId,
-        hasAssistantResponse: !!assistantResponse
+        threadId: currentThreadId,
+        messageLength: content.length
       });
-
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to send message' });
+      logger.error('Failed to send message', error);
+      set({ error: 'Failed to send message' });
+      throw error;
     } finally {
       set({ isSending: false });
     }
   },
 
-  submitFeedback: async (messageId: string, runId: string, threadId: string, rating: 'like' | 'dislike', comment?: string) => {
+  // Feedback
+  submitFeedback: async (messageId: string, thumbsUp: boolean, comment?: string): Promise<void> => {
     try {
-      const token = await getAuthToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
+      // Find the message to get runId
+      const state = get();
+      let message: Message | undefined;
       
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      for (const threadMessages of Object.values(state.messagesByThread)) {
+        message = threadMessages.find(m => m.id === messageId);
+        if (message) break;
       }
-
+      
+      if (!message) {
+        throw new Error('Message not found');
+      }
+      
+      if (!message.runId) {
+        throw new Error('Cannot submit feedback: message has no runId');
+      }
+      
+      const rating = thumbsUp ? 'like' : 'dislike';
+      
       const response = await fetch('/api/feedback', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          runId,
+          runId: message.runId,
           rating,
           comment
-        }),
+        })
       });
-      
+
       if (!response.ok) {
-        const errorData = await response.json();
-        if (response.status === 401) {
-          throw new Error('אנא התחבר כדי לשלוח משוב');
-        }
-        throw new Error(errorData.error || 'Failed to submit feedback');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const data = await response.json();
       
-      const result = await response.json();
-      const userContext = get().userContext;
+      if (!data.success) {
+        throw new Error(data.error?.message || 'Failed to submit feedback');
+      }
+
       logger.info('Feedback submitted successfully', undefined, {
-        userId: userContext?.uid,
-        runId: runId,
-        rating: rating,
-        hasComment: !!comment,
-        success: result.success
+        messageId,
+        runId: message.runId,
+        rating,
+        hasComment: !!comment
       });
-      return result;
-      
     } catch (error) {
-      logger.error('Error submitting feedback', error, undefined, {
-        userId: get().userContext?.uid,
-        runId: runId,
-        rating: rating
-      });
+      logger.error('Failed to submit feedback', error);
       throw error;
     }
   },
 
-  setLoading: (loading: boolean) => {
-    set({ isLoading: loading });
-  },
+  // UI state management
+  setIsLoading: (isLoading: boolean) => set({ isLoading }),
+  setIsSending: (isSending: boolean) => set({ isSending }),
+  setError: (error: string | null) => set({ error }),
 
-  setSending: (sending: boolean) => {
-    set({ isSending: sending });
-  },
-
-  setError: (error: string | null) => {
-    set({ error });
-  },
-
+  // Utility functions
   clearChat: () => {
-    const state = get();
-    const userContext = state.userContext;
-    
     set({
       messagesByThread: {},
       activeThreadId: null,
@@ -684,79 +480,27 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       error: null
     });
     
-    // Clear localStorage for current user
-    saveThreadsToStorage(state.defaultAssistantId, [], userContext?.uid);
+    const state = get();
+    storeThreads(state.defaultAssistantId, []);
     
-    logger.info('Chat data cleared', undefined, {
-      userId: userContext?.uid,
-      clearedThreads: state.threads.length,
-      clearedMessages: Object.keys(state.messagesByThread).length
-    });
+    logger.info('Chat cleared');
   },
 
   syncWithLocalStorage: () => {
     const state = get();
-    const userContext = state.userContext;
-    saveThreadsToStorage(state.defaultAssistantId, state.threads, userContext?.uid);
-  },
-
-  clearUserData: () => {
-    set({
-      messagesByThread: {},
-      activeThreadId: null,
-      threads: [],
-      error: null,
-      isInitialized: false
-    });
+    storeThreads(state.defaultAssistantId, state.threads);
+    logger.debug('Synced with local storage');
   },
 
   getUserThreads: () => {
-    const state = get();
-    const userContext = state.userContext;
-    
-    return state.threads.filter(thread => 
-      !userContext || !thread.userId || thread.userId === userContext.uid
-    );
+    return get().threads;
   }
 }));
 
-// Hook to use the chat store with authentication
-export const useAuthenticatedChatStore = () => {
-  const { user } = useAuthContext();
-  const store = useChatStore();
-
-
-
-  // Update the global auth token whenever user changes
-  React.useEffect(() => {
-    const updateToken = async () => {
-      if (user) {
-        try {
-          const token = await user.getIdToken(true);
-          if (typeof window !== 'undefined') {
-            (window as any).__authToken = token;
-          }
-        } catch (error) {
-          logger.error('Failed to get auth token', error, { component: 'chat-store' });
-        }
-      }
-    };
-    updateToken();
-  }, [user]); // Use user directly instead of getIdToken function
-
-  // Update user context when user changes
-  React.useEffect(() => {
-    if (user) {
-      const userContext: UserContext = {
-        uid: user.uid,
-        email: user.email || undefined,
-        displayName: user.displayName || undefined
-      };
-      store.setUserContext(userContext);
-    } else {
-      store.setUserContext(null);
-    }
-  }, [user, store]); // Include store dependency
-
-  return store;
+// Public hook for chat store (replaces useAuthenticatedChatStore)
+export const usePublicChatStore = () => {
+  return useChatStore();
 };
+
+// For backward compatibility during migration
+export const useAuthenticatedChatStore = usePublicChatStore;

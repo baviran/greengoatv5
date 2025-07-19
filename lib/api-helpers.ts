@@ -1,5 +1,3 @@
-import { useAuthContext } from '@/context/auth-context';
-
 export interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: any;
@@ -7,22 +5,14 @@ export interface ApiOptions {
 }
 
 /**
- * Hook for making authenticated API requests
+ * Hook for making API requests
  */
-export function useAuthenticatedFetch() {
-  const { getIdToken } = useAuthContext();
-
-  const authenticatedFetch = async (url: string, options: ApiOptions = {}) => {
-    const token = await getIdToken();
-    
+export function useApiFetch() {
+  const apiFetch = async (url: string, options: ApiOptions = {}) => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
 
     const config: RequestInit = {
       method: options.method || 'GET',
@@ -36,51 +26,39 @@ export function useAuthenticatedFetch() {
     const response = await fetch(url, config);
     
     if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Authentication required');
-      }
       throw new Error(`API request failed: ${response.statusText}`);
     }
 
     return response;
   };
 
-  return authenticatedFetch;
+  return apiFetch;
 }
 
 /**
- * Helper function for making authenticated API requests outside of React components
+ * Helper function for making API requests outside of React components
  */
-export async function authenticatedFetch(
+export async function apiFetch(
   url: string, 
-  options: ApiOptions & { token?: string } = {}
+  options: ApiOptions = {}
 ) {
-  const { token, ...fetchOptions } = options;
-  
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...fetchOptions.headers,
+    ...options.headers,
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   const config: RequestInit = {
-    method: fetchOptions.method || 'GET',
+    method: options.method || 'GET',
     headers,
   };
 
-  if (fetchOptions.body) {
-    config.body = JSON.stringify(fetchOptions.body);
+  if (options.body) {
+    config.body = JSON.stringify(options.body);
   }
 
   const response = await fetch(url, config);
   
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Authentication required');
-    }
     throw new Error(`API request failed: ${response.statusText}`);
   }
 

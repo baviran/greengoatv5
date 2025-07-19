@@ -113,21 +113,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   private getUserId(): string | undefined {
-    // Try to get user ID from various sources
-    try {
-      // Check if user is available in context or global state
-      // This is a simplified version - you might need to adapt based on your auth system
-      if (typeof window !== 'undefined') {
-        // Check localStorage for user data
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          const user = JSON.parse(userData);
-          return user.uid;
-        }
-      }
-    } catch {
-      // Ignore errors when getting user ID
-    }
+    // No user authentication in public app
     return undefined;
   }
 

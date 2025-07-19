@@ -1,20 +1,13 @@
 import { NextRequest } from 'next/server';
 import { feedbackCache } from '../../lib/services/feedbackCache';
 import { getFeedbackService } from '../../lib/services/airtable/feedback-airtable';
-import { withApiResponse, createApiResponse, AuthResultWithContext } from '@/app/lib/utils/response-middleware';
+import { withApiResponse, createApiResponse } from '@/app/lib/utils/response-middleware';
 import { ApiResponseBuilder, HTTP_STATUS } from '@/app/lib/utils/api-response';
 import { Logger } from '@/app/lib/utils/logger';
 
 export const POST = withApiResponse('feedback-api', 'submit-feedback')(
-    async (request: NextRequest, authResult: AuthResultWithContext) => {
-        const { user, context } = authResult;
+    async (request: NextRequest, context) => {
         const logger = Logger.getInstance();
-        
-        // Type guard: user should always be defined when auth is successful
-        if (!user) {
-            const errorResponse = ApiResponseBuilder.unauthorized('Authentication failed', context);
-            return createApiResponse(errorResponse, HTTP_STATUS.UNAUTHORIZED);
-        }
 
         try {
             const body = await request.json();
@@ -28,7 +21,9 @@ export const POST = withApiResponse('feedback-api', 'submit-feedback')(
             });
 
             logger.debug('Cache diagnostic info', context, {
-                allCachedRunIds: feedbackCache.getAll().map(data => data.runId)
+                allCachedRunIds: feedbackCache.getAll().map(data => data.runId),
+                cacheSize: feedbackCache.size(),
+                requestedRunId: runId
             });
 
             if (!runId || !rating) {
@@ -49,179 +44,130 @@ export const POST = withApiResponse('feedback-api', 'submit-feedback')(
                 return createApiResponse(errorResponse, HTTP_STATUS.BAD_REQUEST);
             }
 
-            // Get the cached interaction data
-            logger.debug('Attempting to retrieve cached data', context, {
-                runId
-            });
+            // Convert text rating to emoji for Airtable
+            const airtableRating = rating === 'like' ? '👍' : '👎';
+
+            // Retrieve cached data by runId
             const cachedData = feedbackCache.get(runId);
             
             if (!cachedData) {
-                logger.error('Interaction data not found for runId', new Error('Interaction data not found'), context, {
+                logger.warn('No cached data found for runId', context, {
                     runId,
-                    availableRunIds: feedbackCache.getAll().map(d => d.runId)
+                    availableRunIds: feedbackCache.getAll().map(data => data.runId),
+                    cacheSize: feedbackCache.size(),
+                    allCachedData: feedbackCache.getAll().map(data => ({
+                        runId: data.runId,
+                        threadId: data.threadId,
+                        timestamp: data.timestamp
+                    }))
                 });
-                const errorResponse = ApiResponseBuilder.notFound('Interaction data not found for this runId', context);
+                
+                // For development: Allow feedback submission without cached data
+                if (process.env.NODE_ENV === 'development') {
+                    logger.warn('Development mode: Creating minimal feedback record without cached data', context, {
+                        runId,
+                        rating
+                    });
+                    
+                    const minimalAirtableData = {
+                        'Thread ID': 'unknown',
+                        'Run ID': runId,
+                        'User Prompt': 'N/A (cache miss)',
+                        'Assistant Response': 'N/A (cache miss)',
+                        'Tool Calls': '[]',
+                        'Tool Outputs': '[]',
+                        'QA Comment': comment || '',
+                        'Reviewed By': '',
+                        'Rating': airtableRating
+                    };
+                    
+                    try {
+                        const feedbackService = getFeedbackService();
+                        const airtableResponse = await feedbackService.createRecord('Feedbacks', minimalAirtableData);
+                        
+                        logger.info('Development feedback submitted successfully (without cache)', context, {
+                            runId,
+                            airtableRecordId: airtableResponse.id,
+                            rating
+                        });
+                        
+                        const responseData = {
+                            success: true,
+                            airtableRecordId: airtableResponse.id,
+                            message: 'Feedback submitted successfully (development mode)',
+                            warning: 'Interaction data was not cached'
+                        };
+                        
+                        const successResponse = ApiResponseBuilder.success(responseData, context);
+                        return createApiResponse(successResponse, HTTP_STATUS.OK);
+                        
+                    } catch (airtableError) {
+                        logger.error('Failed to submit development feedback to Airtable', airtableError, context, {
+                            runId,
+                            rating
+                        });
+                        const errorResponse = ApiResponseBuilder.internalError('Failed to submit feedback', context);
+                        return createApiResponse(errorResponse, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+                    }
+                }
+                
+                const errorResponse = ApiResponseBuilder.notFound('Cached interaction data not found for this run', context);
                 return createApiResponse(errorResponse, HTTP_STATUS.NOT_FOUND);
             }
 
-            // Check if the user is authorized to provide feedback for this interaction
-            if (cachedData.userId && cachedData.userId !== user.uid) {
-                logger.warn('User attempted to provide feedback for another user\'s interaction', context, {
-                    runId,
-                    attemptingUserId: user.uid,
-                    actualUserId: cachedData.userId
-                });
-                const errorResponse = ApiResponseBuilder.forbidden('You are not authorized to provide feedback for this interaction', context);
-                return createApiResponse(errorResponse, HTTP_STATUS.FORBIDDEN);
-            }
-
-            logger.info('Found cached data for runId', context, {
+            logger.info('Retrieved cached data for feedback', context, {
                 runId,
-                hasUserData: !!cachedData.userId,
-                dataKeys: Object.keys(cachedData)
+                hasUserPrompt: !!cachedData.userPrompt,
+                hasAssistantResponse: !!cachedData.assistantResponse,
+                threadId: cachedData.threadId
             });
 
-            logger.debug('Cached data details', context, {
-                cachedData: JSON.stringify(cachedData, null, 2)
-            });
-
-            // Convert like/dislike to emoji format expected by Airtable
-            const airtableRating = rating === 'like' ? '👍' : '👎';
-
-            // Update the cached data with feedback
-            const updatedData = feedbackCache.update(runId, {
-                rating: airtableRating,
-                comment: comment || null,
-                reviewer: user.email || user.uid
-            });
-
-            if (!updatedData) {
-                logger.error('Failed to update cached data', new Error('Failed to update cached data'), context, {
-                    runId,
-                    rating: airtableRating
-                });
-                const errorResponse = ApiResponseBuilder.internalError('Failed to update cached data', context);
-                return createApiResponse(errorResponse, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-            }
-
-            // Send the complete data to Airtable
-            try {
-                const airtableResult = await getFeedbackService().logAssistantInteraction(updatedData);
-                logger.info('Feedback sent to Airtable successfully', context, {
-                    runId,
-                    rating: airtableRating,
-                    airtableId: airtableResult.id
-                });
-                
-                const responseData = {
-                    success: true,
-                    message: 'Feedback stored successfully',
-                    runId,
-                    airtableId: airtableResult.id
-                };
-                
-                const successResponse = ApiResponseBuilder.success(responseData, context);
-                return createApiResponse(successResponse, HTTP_STATUS.OK);
-                
-            } catch (airtableError) {
-                logger.error('Error sending feedback to Airtable', airtableError, context, {
-                    runId,
-                    rating: airtableRating,
-                    fallbackStrategy: 'cache-only'
-                });
-                // Still return success since we have it cached
-                const responseData = {
-                    success: true,
-                    message: 'Feedback cached successfully, will retry Airtable sync',
-                    runId,
-                    warning: 'Airtable sync failed but data is cached'
-                };
-                
-                const successResponse = ApiResponseBuilder.success(responseData, context);
-                return createApiResponse(successResponse, HTTP_STATUS.OK);
-            }
-
-        } catch (error) {
-            logger.error('Error processing feedback', error, context);
-            const errorResponse = ApiResponseBuilder.internalError('Internal server error', context);
-            return createApiResponse(errorResponse, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-        }
-    }
-);
-
-export const GET = withApiResponse('feedback-api', 'get-feedback')(
-    async (request: NextRequest, authResult: AuthResultWithContext) => {
-        const { user, context } = authResult;
-        const logger = Logger.getInstance();
-        
-        // Type guard: user should always be defined when auth is successful
-        if (!user) {
-            const errorResponse = ApiResponseBuilder.unauthorized('Authentication failed', context);
-            return createApiResponse(errorResponse, HTTP_STATUS.UNAUTHORIZED);
-        }
-
-        try {
-            const { searchParams } = new URL(request.url);
-            const runId = searchParams.get('runId');
-
-            if (runId) {
-                logger.info('Retrieving feedback for specific runId', context, {
-                    runId
-                });
-                
-                const data = feedbackCache.get(runId);
-                if (!data) {
-                    logger.warn('Feedback data not found for runId', context, {
-                        runId
-                    });
-                    const errorResponse = ApiResponseBuilder.notFound('Data not found', context);
-                    return createApiResponse(errorResponse, HTTP_STATUS.NOT_FOUND);
-                }
-                
-                // Check if the user is authorized to view this interaction
-                if (data.userId && data.userId !== user.uid) {
-                    logger.warn('User attempted to view another user\'s feedback', context, {
-                        runId,
-                        attemptingUserId: user.uid,
-                        actualUserId: data.userId
-                    });
-                    const errorResponse = ApiResponseBuilder.forbidden('You are not authorized to view this interaction', context);
-                    return createApiResponse(errorResponse, HTTP_STATUS.FORBIDDEN);
-                }
-                
-                logger.info('Successfully retrieved feedback data', context, {
-                    runId,
-                    hasUserData: !!data.userId
-                });
-                
-                const successResponse = ApiResponseBuilder.success(data, context);
-                return createApiResponse(successResponse, HTTP_STATUS.OK);
-            }
-
-            // Return only the user's interactions
-            logger.info('Retrieving all feedback data for user', context);
-            
-            const allData = feedbackCache.getAll();
-            const userInteractions = allData.filter(interaction => 
-                !interaction.userId || interaction.userId === user.uid
-            );
-            
-            logger.info('Successfully retrieved user interactions', context, {
-                totalInteractions: allData.length,
-                userInteractions: userInteractions.length
-            });
-            
-            const responseData = {
-                interactions: userInteractions,
-                count: userInteractions.length 
+            // Prepare the data for Airtable with feedback
+            const airtableData = {
+                'Thread ID': cachedData.threadId,
+                'Run ID': runId,
+                'User Prompt': cachedData.userPrompt,
+                'Assistant Response': cachedData.assistantResponse,
+                'Tool Calls': JSON.stringify(cachedData.toolCalls || []),
+                'Tool Outputs': JSON.stringify(cachedData.toolOutputs || []),
+                'QA Comment': comment || '',
+                'Reviewed By': '',
+                'Rating': airtableRating
             };
-            
+
+            logger.info('Submitting feedback to Airtable', context, {
+                runId,
+                rating,
+                hasComment: !!comment,
+                threadId: cachedData.threadId
+            });
+
+            // Submit to Airtable
+            const feedbackService = getFeedbackService();
+            const airtableResponse = await feedbackService.createRecord('Feedbacks', airtableData);
+
+            logger.info('Feedback submitted successfully to Airtable', context, {
+                runId,
+                airtableRecordId: airtableResponse.id,
+                rating
+            });
+
+            const responseData = {
+                success: true,
+                airtableRecordId: airtableResponse.id,
+                message: 'Feedback submitted successfully'
+            };
+
             const successResponse = ApiResponseBuilder.success(responseData, context);
             return createApiResponse(successResponse, HTTP_STATUS.OK);
 
         } catch (error) {
-            logger.error('Error retrieving feedback data', error, context);
-            const errorResponse = ApiResponseBuilder.internalError('Internal server error', context);
+            logger.error('Feedback submission failed', error, context);
+
+            const errorResponse = ApiResponseBuilder.internalError(
+                'Failed to submit feedback',
+                context
+            );
             return createApiResponse(errorResponse, HTTP_STATUS.INTERNAL_SERVER_ERROR);
         }
     }

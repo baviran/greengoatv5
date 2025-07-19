@@ -152,7 +152,7 @@ export const useNotificationStore = create<NotificationStore>()(
         });
         
         // Clear persisted preferences
-        persistence.clearPersistedState(persistenceConfig);
+        persistence.removePersistedState(persistenceConfig);
         
         logger.info('Notification store reset to defaults');
       },

@@ -135,42 +135,7 @@ export class ErrorHandler {
     return this.handleError(serviceError, context);
   }
 
-  /**
-   * Handle authentication errors with token information
-   */
-  public async handleAuthError(
-    type: 'unauthenticated' | 'unauthorized' | 'token_expired' | 'invalid_token',
-    context: RequestContext,
-    details?: any
-  ): Promise<NextResponse> {
-    const { 
-      AuthenticationError, 
-      AuthorizationError, 
-      TokenExpiredError, 
-      InvalidTokenError 
-    } = await import('./app-errors');
-
-    let error: AppError;
-    
-    switch (type) {
-      case 'unauthenticated':
-        error = new AuthenticationError('Authentication required', details);
-        break;
-      case 'unauthorized':
-        error = new AuthorizationError('Insufficient permissions', details);
-        break;
-      case 'token_expired':
-        error = new TokenExpiredError('Authentication token has expired', details);
-        break;
-      case 'invalid_token':
-        error = new InvalidTokenError('Invalid authentication token', details);
-        break;
-      default:
-        error = new AuthenticationError('Authentication error', details);
-    }
-
-    return this.handleError(error, context);
-  }
+  // Authentication error handling removed - public app
 
   /**
    * Handle resource not found errors
@@ -268,13 +233,7 @@ export async function handleValidationError(
   return errorHandler.handleValidationError(errors, context);
 }
 
-export async function handleAuthError(
-  type: 'unauthenticated' | 'unauthorized' | 'token_expired' | 'invalid_token',
-  context: RequestContext,
-  details?: any
-): Promise<NextResponse> {
-  return errorHandler.handleAuthError(type, context, details);
-}
+// Authentication error function removed - public app
 
 export async function handleNotFoundError(
   resource: string,

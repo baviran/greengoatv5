@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { HTTP_STATUS, createRequestContext, RequestContext } from './api-response';
-import { withAuth } from '@/lib/auth-middleware';
 import { Logger } from './logger';
 import { ErrorHandler } from '../errors/error-handler';
-
-// Enhanced auth result that includes request context
-export interface AuthResultWithContext {
-  user: any;
-  context: RequestContext;
-}
-
-// Handler type for authenticated routes with response context
-export type AuthenticatedResponseHandler = (
-  req: NextRequest,
-  authResult: AuthResultWithContext
-) => Promise<NextResponse>;
 
 // Handler type for public routes with response context
 export type PublicResponseHandler = (
@@ -24,72 +11,33 @@ export type PublicResponseHandler = (
 
 /**
  * Higher-order function that wraps API routes with unified response handling
- * and authentication
  */
 export function withApiResponse(
   component: string,
-  action: string,
-  requireAuth: boolean = true
+  action: string
 ) {
-  return function (handler: AuthenticatedResponseHandler | PublicResponseHandler) {
-    if (requireAuth) {
-      return withAuth(async (req: NextRequest, authResult: any) => {
-        const { user, context: authContext } = authResult;
+  return function (handler: PublicResponseHandler) {
+    return async (req: NextRequest) => {
+      const requestContext = createRequestContext(component, action);
+      const logger = Logger.getInstance();
+      
+      try {
+        logger.requestStart('API request started', requestContext);
         
-        // Create request context with auth information
-        const requestContext = createRequestContext(
-          component,
-          action,
-          user?.uid,
-          user?.email,
-          authContext?.requestId
-        );
+        const response = await handler(req, requestContext);
         
-        const logger = Logger.getInstance();
+        logger.requestEnd('API request completed', requestContext.startTime!, requestContext);
         
-        try {
-          logger.requestStart('API request started', requestContext);
-          
-          const response = await (handler as AuthenticatedResponseHandler)(req, {
-            user,
-            context: requestContext
-          });
-          
-          logger.requestEnd('API request completed', requestContext.startTime!, requestContext);
-          
-          return response;
-          
-        } catch (error) {
-          logger.error('API request failed', error, requestContext);
-          
-          // Use the new ErrorHandler for consistent error processing
-          const errorHandler = ErrorHandler.getInstance();
-          return errorHandler.handleApiError(error as Error, requestContext, req);
-        }
-      });
-    } else {
-      return async (req: NextRequest) => {
-        const requestContext = createRequestContext(component, action);
-        const logger = Logger.getInstance();
+        return response;
         
-        try {
-          logger.requestStart('API request started', requestContext);
-          
-          const response = await (handler as PublicResponseHandler)(req, requestContext);
-          
-          logger.requestEnd('API request completed', requestContext.startTime!, requestContext);
-          
-          return response;
-          
-        } catch (error) {
-          logger.error('API request failed', error, requestContext);
-          
-          // Use the new ErrorHandler for consistent error processing
-          const errorHandler = ErrorHandler.getInstance();
-          return errorHandler.handleApiError(error as Error, requestContext, req);
-        }
-      };
-    }
+      } catch (error) {
+        logger.error('API request failed', error, requestContext);
+        
+        // Use the new ErrorHandler for consistent error processing
+        const errorHandler = ErrorHandler.getInstance();
+        return errorHandler.handleApiError(error as Error, requestContext, req);
+      }
+    };
   };
 }
 

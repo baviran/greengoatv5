@@ -48,26 +48,7 @@ export abstract class AppError extends Error {
   }
 }
 
-// Authentication and Authorization Errors
-export class AuthenticationError extends AppError {
-  readonly statusCode = HTTP_STATUS.UNAUTHORIZED;
-  readonly code = ERROR_CODES.UNAUTHENTICATED;
-}
-
-export class AuthorizationError extends AppError {
-  readonly statusCode = HTTP_STATUS.FORBIDDEN;
-  readonly code = ERROR_CODES.UNAUTHORIZED;
-}
-
-export class TokenExpiredError extends AppError {
-  readonly statusCode = HTTP_STATUS.UNAUTHORIZED;
-  readonly code = ERROR_CODES.TOKEN_EXPIRED;
-}
-
-export class InvalidTokenError extends AppError {
-  readonly statusCode = HTTP_STATUS.UNAUTHORIZED;
-  readonly code = ERROR_CODES.INVALID_TOKEN;
-}
+// Authentication errors removed - public app
 
 // Validation Errors
 export class ValidationError extends AppError {
@@ -192,14 +173,7 @@ export class AirtableError extends AppError {
   }
 }
 
-export class FirebaseError extends AppError {
-  readonly statusCode = HTTP_STATUS.INTERNAL_SERVER_ERROR;
-  readonly code = ERROR_CODES.FIREBASE_ERROR;
-
-  constructor(message: string, details?: any) {
-    super(`Firebase error: ${message}`, details);
-  }
-}
+// Firebase error removed - public app
 
 // Business Logic Errors
 export class BusinessLogicError extends AppError {
@@ -218,10 +192,6 @@ export function isAppError(error: any): error is AppError {
 
 export function createErrorFromStatusCode(statusCode: number, message: string, details?: any): AppError {
   switch (statusCode) {
-    case HTTP_STATUS.UNAUTHORIZED:
-      return new AuthenticationError(message, details);
-    case HTTP_STATUS.FORBIDDEN:
-      return new AuthorizationError(message, details);
     case HTTP_STATUS.NOT_FOUND:
       return new NotFoundError(message, undefined, details);
     case HTTP_STATUS.CONFLICT:
@@ -270,12 +240,6 @@ export const AppErrors = {
   // Base
   AppError,
   
-  // Auth
-  AuthenticationError,
-  AuthorizationError,
-  TokenExpiredError,
-  InvalidTokenError,
-  
   // Validation
   ValidationError,
   MissingFieldError,
@@ -296,7 +260,6 @@ export const AppErrors = {
   ExternalServiceError,
   OpenAIError,
   AirtableError,
-  FirebaseError,
   
   // Business
   BusinessLogicError

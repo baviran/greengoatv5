@@ -14,28 +14,27 @@ export const useChat = () => {
 };
 
 // Initialize chat stores
-export const initializeChatStores = async (userId?: string) => {
+export const initializeChatStores = async () => {
   const startTime = performance.now();
   
   try {
-    logger.info('Initializing chat stores', undefined, { userId });
+    logger.info('Initializing chat stores');
     
     const chatStore = useMainChatStore.getState();
     
-    // Initialize chat store with user context
+    // Initialize chat store
     if (typeof chatStore.initializeStore === 'function') {
-      chatStore.initializeStore(userId ? { uid: userId } : null);
+      chatStore.initializeStore();
     }
     
     const duration = performance.now() - startTime;
     
     logger.info('Chat stores initialized', undefined, {
-      userId,
       duration: Math.round(duration)
     });
     
   } catch (error) {
-    logger.error('Failed to initialize chat stores', error, undefined, { userId });
+    logger.error('Failed to initialize chat stores', error);
     throw error;
   }
 };

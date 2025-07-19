@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '@/app/components/icons';
-import { useAuthenticatedChatStore } from '../lib/store/chatStore';
-import { useAppAuth } from '../lib/store/appStore';
-import { AuthGuard } from './auth/AuthGuard';
+import { useChatStore } from '../lib/store/chatStore';
 import { Logger } from '@/app/lib/utils/logger';
 import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';
 
@@ -11,8 +9,7 @@ const logger = Logger.getInstance().withContext({
 });
 
 const MessageInputComponent: React.FC = () => {
-    const { sendMessage, isLoading, isSending } = useAuthenticatedChatStore();
-    const { user } = useAppAuth();
+    const { sendMessage, isLoading, isSending } = useChatStore();
     const [message, setMessage] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     
@@ -25,8 +22,6 @@ const MessageInputComponent: React.FC = () => {
                 await sendMessage(messageToSend);
             } catch (error) {
                 logger.error('Error sending message', error, undefined, {
-                    userId: user?.uid,
-                    userEmail: user?.email,
                     messageLength: messageToSend.length,
                     action: 'send-user-message'
                 });
@@ -51,46 +46,36 @@ const MessageInputComponent: React.FC = () => {
     }, [message]);
 
     // Disable input during loading or sending
-    const isDisabled = isLoading || isSending || !user;
+    const isDisabled = isLoading || isSending;
 
     return (
-        <AuthGuard 
-            fallback={
-                <div className="p-3 sm:p-4 border-t border-border bg-card">
-                    <div className="flex items-center justify-center py-4">
-                        <p className="text-foreground/70 text-sm">אנא התחבר כדי לשלוח הודעות</p>
-                    </div>
-                </div>
-            }
-        >
-            <div className="p-3 sm:p-4 border-t border-border bg-card">
-                <div className="flex items-end space-x-2 rtl:space-x-reverse">
-                    <textarea
-                        ref={textareaRef}
-                        rows={1}
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder={isLoading ? "טוען שיחה..." : isSending ? "שולח הודעה..." : "הקלד הודעה..."}
-                        disabled={isDisabled}
-                        className="flex-grow p-3 border border-border rounded-lg resize-none focus:ring-2 focus:ring-primary outline-none bg-background text-foreground text-sm max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-muted min-h-[44px] sm:min-h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
-                        onKeyDown={handleKeyDown}
-                        style={{ scrollbarWidth: 'thin' }}
-                    />
-                    <button
-                        onClick={handleSendMessage}
-                        disabled={!message.trim() || isDisabled}
-                        className="p-3 h-[44px] w-[44px] sm:h-[48px] sm:w-[48px] flex items-center justify-center rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                        aria-label="Send message"
-                    >
-                        {isSending ? (
-                            <Icon name="loader2" className="w-5 h-5 animate-spin" />
-                        ) : (
-                            <Icon name="send" className="w-5 h-5 transform rtl:rotate-180" />
-                        )}
-                    </button>
-                </div>
+        <div className="p-3 sm:p-4 border-t border-border bg-card">
+            <div className="flex items-end space-x-2 rtl:space-x-reverse">
+                <textarea
+                    ref={textareaRef}
+                    rows={1}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder={isLoading ? "טוען שיחה..." : isSending ? "שולח הודעה..." : "הקלד הודעה..."}
+                    disabled={isDisabled}
+                    className="flex-grow p-3 border border-border rounded-lg resize-none focus:ring-2 focus:ring-primary outline-none bg-background text-foreground text-sm max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-muted min-h-[44px] sm:min-h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    onKeyDown={handleKeyDown}
+                    style={{ scrollbarWidth: 'thin' }}
+                />
+                <button
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || isDisabled}
+                    className="p-3 h-[44px] w-[44px] sm:h-[48px] sm:w-[48px] flex items-center justify-center rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                    aria-label="Send message"
+                >
+                    {isSending ? (
+                        <Icon name="loader2" className="w-5 h-5 animate-spin" />
+                    ) : (
+                        <Icon name="send" className="w-5 h-5 transform rtl:rotate-180" />
+                    )}
+                </button>
             </div>
-        </AuthGuard>
+        </div>
     );
 };
 

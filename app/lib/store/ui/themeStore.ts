@@ -350,7 +350,7 @@ export const useThemeStore = create<ThemeStore>()(
           applyThemeToDocument(resolvedTheme, defaultPreferences);
           
           // Clear persisted preferences
-          persistence.clearPersistedState(persistenceConfig);
+          persistence.removePersistedState(persistenceConfig);
           
           logger.info('Theme reset to defaults', undefined, {
             resolvedTheme,
@@ -373,8 +373,7 @@ export const useThemeStore = create<ThemeStore>()(
           
           // Load persisted preferences
           const persistedData = persistence.getPersistedState<{ preferences: ThemePreferences }>(
-            persistenceConfig, 
-            userId
+            persistenceConfig
           );
           const preferences = persistedData?.preferences || defaultPreferences;
           

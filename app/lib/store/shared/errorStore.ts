@@ -31,7 +31,7 @@ interface ErrorStoreState extends BaseState, ErrorState {
   errorThresholds: Record<string, number>;
 }
 
-interface ErrorStoreActions extends BaseActions, ErrorActions {
+interface ErrorStoreActions extends BaseActions {
   setError: (key: string, error: string, options?: {
     severity?: ErrorInfo['severity'];
     category?: ErrorInfo['category'];
@@ -46,10 +46,10 @@ interface ErrorStoreActions extends BaseActions, ErrorActions {
   clearError: (key: string) => void;
   clearAllErrors: () => void;
   hasError: (key: string) => boolean;
+  getCriticalErrors: () => ErrorInfo[];
   getErrorInfo: (key: string) => ErrorInfo | null;
   getErrorsByCategory: (category: ErrorInfo['category']) => ErrorInfo[];
   getErrorsBySeverity: (severity: ErrorInfo['severity']) => ErrorInfo[];
-  getCriticalErrors: () => ErrorInfo[];
   getErrorHistory: (key?: string) => ErrorInfo[];
   markAsRecovered: (key: string) => void;
   attemptRecovery: (key: string) => Promise<boolean>;

@@ -1,5 +1,4 @@
 import './globals.scss';
-import { AuthProvider } from '@/context/auth-context';
 import { RootErrorBoundary } from '@/app/components/error-boundary/RootErrorBoundary';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -9,9 +8,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
       <body className="bg-background text-foreground ">
         <RootErrorBoundary>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          {children}
         </RootErrorBoundary>
       </body>
       </html>

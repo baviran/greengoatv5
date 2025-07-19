@@ -11,72 +11,9 @@ export interface BaseActions {
 
 // Context interfaces
 export interface LogContext {
-  userId?: string;
   requestId?: string;
   component?: string;
   action?: string;
-}
-
-export interface UserContext {
-  uid: string;
-  email?: string | null;
-  displayName?: string | null;
-  photoURL?: string | null;
-  token?: string | null;
-}
-
-// Auth store interfaces
-export interface AuthState extends BaseState {
-  user: UserContext | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-}
-
-export interface AuthActions extends BaseActions {
-  setUser: (user: UserContext | null) => void;
-  updateToken: (token: string) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  signOut: () => Promise<void>;
-}
-
-// User store interfaces
-export interface UserState extends BaseState {
-  profile: UserProfile | null;
-  preferences: UserPreferences;
-  isLoading: boolean;
-  error: string | null;
-}
-
-export interface UserProfile {
-  uid: string;
-  email: string;
-  displayName?: string;
-  photoURL?: string;
-  createdAt: Date;
-  lastLoginAt: Date;
-  promptCount: number;
-  subscription: {
-    tier: 'free' | 'premium' | 'enterprise';
-    expiresAt?: Date;
-  };
-}
-
-export interface UserPreferences {
-  theme: 'light' | 'dark';
-  notifications: boolean;
-  autoSave: boolean;
-  fontSize: 'small' | 'medium' | 'large';
-  language: string;
-}
-
-export interface UserActions extends BaseActions {
-  setProfile: (profile: UserProfile | null) => void;
-  updatePreferences: (preferences: Partial<UserPreferences>) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  syncProfile: () => Promise<void>;
 }
 
 // Chat store interfaces
@@ -99,7 +36,6 @@ export interface Thread {
   title: string;
   createdAt: Date;
   updatedAt: Date;
-  userId: string;
   assistantId: string;
   messageCount: number;
   lastMessage?: string;
@@ -213,6 +149,7 @@ export interface LoadingActions extends BaseActions {
   setGlobalLoading: (loading: boolean) => void;
   setLoading: (key: string, loading: boolean) => void;
   isLoading: (key: string) => boolean;
+  getLoadingKeys: () => string[];
   clearLoading: (key: string) => void;
 }
 
@@ -226,21 +163,24 @@ export interface ErrorActions extends BaseActions {
   setGlobalError: (error: string | null) => void;
   clearError: (key: string) => void;
   clearAllErrors: () => void;
+  getCriticalErrors: () => string[];
   hasError: (key: string) => boolean;
 }
 
 // Store composition types
 export interface AppStore {
-  auth: AuthState & AuthActions;
-  user: UserState & UserActions;
   chat: ChatState & ChatActions;
   thread: ThreadState & ThreadActions;
   message: MessageState & MessageActions;
-  theme: ThemeState & ThemeActions;
-  notification: NotificationState & NotificationActions;
-  modal: ModalState & ModalActions;
-  loading: LoadingState & LoadingActions;
-  error: ErrorState & ErrorActions;
+  ui: {
+    theme: ThemeState & ThemeActions;
+    notification: NotificationState & NotificationActions;
+    modal: ModalState & ModalActions;
+  };
+  shared: {
+    loading: LoadingState & LoadingActions;
+    error: ErrorState & ErrorActions;
+  };
 }
 
 // Persistence configuration
@@ -249,7 +189,6 @@ export interface PersistenceConfig {
   version: number;
   whitelist?: string[];
   blacklist?: string[];
-  userSpecific?: boolean;
   migrate?: (persistedState: any, version: number) => any;
 }
 

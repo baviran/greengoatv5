@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef} from 'react';
 import { Icon } from '@/app/components/icons';
-import { useAuthenticatedChatStore } from '../lib/store/chatStore';
+import { useChatStore } from '../lib/store/chatStore';
 import FeedbackSection from './FeedbackSection';
 import { Logger } from '@/app/lib/utils/logger';
 import { withErrorBoundary } from '@/app/components/error-boundary/ErrorBoundary';
@@ -10,7 +10,7 @@ const logger = Logger.getInstance().withContext({
 });
 
 const MessageListComponent: React.FC = () => {
-    const { activeThreadId, messagesByThread, isLoading, isSending, submitFeedback } = useAuthenticatedChatStore();
+    const { activeThreadId, messagesByThread, isLoading, isSending, submitFeedback } = useChatStore();
 
     const messages = useMemo(() => {
         return activeThreadId ? messagesByThread[activeThreadId] || [] : [];
@@ -24,20 +24,29 @@ const MessageListComponent: React.FC = () => {
 
     const handleFeedbackSubmit = async (messageId: string, type: 'like' | 'dislike', feedback?: string) => {
         const message = messages.find(m => m.id === messageId);
-        if (!message || !message.runId || !activeThreadId) {
-            logger.error('Cannot submit feedback - missing required data', undefined, undefined, {
+        if (!message) {
+            logger.error('Cannot submit feedback - message not found', undefined, undefined, {
                 messageId: messageId,
-                hasMessage: !!message,
-                hasRunId: !!message?.runId,
-                hasActiveThreadId: !!activeThreadId,
                 feedbackType: type,
                 action: 'validate-feedback-submission'
             });
             return;
         }
         
+        if (!activeThreadId) {
+            logger.error('Cannot submit feedback - no active thread', undefined, undefined, {
+                messageId: messageId,
+                feedbackType: type,
+                action: 'validate-feedback-submission'
+            });
+            return;
+        }
+        
+
+        
         try {
-            await submitFeedback(messageId, message.runId, activeThreadId, type, feedback);
+            const thumbsUp = type === 'like';
+            await submitFeedback(messageId, thumbsUp, feedback);
         } catch (error) {
             logger.error('Failed to submit feedback', error, undefined, {
                 messageId: messageId,
@@ -96,7 +105,7 @@ const MessageListComponent: React.FC = () => {
                         <p className={`text-xs mt-1 ${timestampColorClass} ${isUser ? 'text-right rtl:text-left' : 'text-left rtl:text-right'}`}>
                             {new Date(msg.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                         </p>
-                        {!isUser && (
+                        {!isUser && msg.runId && (
                             <FeedbackSection
                                 messageId={msg.id}
                                 onFeedbackSubmit={handleFeedbackSubmit}

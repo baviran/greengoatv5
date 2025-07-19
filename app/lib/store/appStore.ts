@@ -4,9 +4,8 @@ import { AppStore } from './types';
 import { Logger } from '../utils/logger';
 
 // Import domain stores
-import { useAuthStore } from './auth/authStore';
-import { useUserStore } from './auth/userStore';
 import { useChatStore } from './chatStore';
+import { initializeChatStores, resetChatStores } from './chat';
 import { useThemeStore, useNotificationStore, useModalStore, initializeUIStores, resetUIStores, setupUIEventHandlers } from './ui';
 import { useLoadingStore, useErrorStore, initializeSharedStores, resetSharedStores, setupSharedEventHandlers } from './shared';
 
@@ -26,7 +25,6 @@ interface AppStoreState {
   isInitializing: boolean;
   initializationError: string | null;
   lastInitialized: number;
-  userId?: string;
   buildVersion?: string;
 }
 
@@ -76,7 +74,7 @@ class AppStoreManager {
     });
   }
 
-  async initialize(userId?: string, options?: {
+  async initialize(options?: {
     buildVersion?: string;
     skipEventHandlers?: boolean;
   }): Promise<void> {
@@ -91,18 +89,17 @@ class AppStoreManager {
       this.setState({ 
         isInitializing: true, 
         initializationError: null,
-        userId,
         buildVersion: options?.buildVersion
       });
 
       logger.info('Initializing app store', undefined, { 
-        userId, 
         buildVersion: options?.buildVersion 
       });
 
       // Initialize domain stores in parallel
       await Promise.all([
-        initializeUIStores(userId),
+        initializeChatStores(),
+        initializeUIStores(),
         initializeSharedStores()
       ]);
 
@@ -114,7 +111,7 @@ class AppStoreManager {
       // Emit initialization complete event
       eventEmitter.emit(createStoreEvent(
         'app.initialized', 
-        { userId, buildVersion: options?.buildVersion }, 
+        { buildVersion: options?.buildVersion }, 
         'app-store'
       ));
 
@@ -125,7 +122,6 @@ class AppStoreManager {
       });
 
       logger.info('App store initialized successfully', undefined, {
-        userId,
         buildVersion: options?.buildVersion,
         duration: Math.round(performance.now() - (endMeasure as any))
       });
@@ -139,7 +135,6 @@ class AppStoreManager {
       });
 
       logger.error('App store initialization failed', error, undefined, {
-        userId,
         buildVersion: options?.buildVersion
       });
 
@@ -160,6 +155,7 @@ class AppStoreManager {
 
       // Reset domain stores in parallel
       await Promise.all([
+        Promise.resolve(resetChatStores()),
         Promise.resolve(resetUIStores()),
         Promise.resolve(resetSharedStores())
       ]);
@@ -170,7 +166,6 @@ class AppStoreManager {
         isInitializing: false,
         initializationError: null,
         lastInitialized: 0,
-        userId: undefined,
         buildVersion: undefined
       });
 
@@ -193,23 +188,6 @@ class AppStoreManager {
     // Set up domain event handlers
     setupUIEventHandlers();
     setupSharedEventHandlers();
-
-    // Global app event handlers
-    const authUnsubscribe = useAuthStore.subscribe(
-      (state) => state.user,
-      (user) => {
-        if (user) {
-          logger.debug('User authenticated, updating app context', undefined, { userId: user.uid });
-          this.setState({ userId: user.uid });
-        } else {
-          logger.debug('User signed out, clearing app context');
-          this.setState({ userId: undefined });
-        }
-      }
-    );
-
-    // Store cleanup function
-    this.cleanupFunctions.push(authUnsubscribe);
 
     // Performance monitoring
     const performanceInterval = setInterval(() => {
@@ -257,15 +235,13 @@ export const useAppStore = (): AppStore & {
     isInitialized: boolean;
     isInitializing: boolean;
     initializationError: string | null;
-    initialize: (userId?: string, options?: any) => Promise<void>;
+    initialize: (options?: any) => Promise<void>;
     reset: () => Promise<void>;
     getPerformanceMetrics: () => any;
     getStorageInfo: () => any;
   };
 } => {
   // Get all individual stores
-  const auth = useAuthStore();
-  const user = useUserStore();
   const chat = useChatStore();
   const theme = useThemeStore();
   const notification = useNotificationStore();
@@ -278,10 +254,6 @@ export const useAppStore = (): AppStore & {
 
   // Memoize the composed store to prevent unnecessary re-renders
   const composedStore = useMemo(() => ({
-    // Auth stores
-    auth,
-    user,
-    
     // Chat stores - chat store contains thread and message functionality
     chat,
     thread: chat,
@@ -303,7 +275,7 @@ export const useAppStore = (): AppStore & {
       getPerformanceMetrics: appStoreManager.getPerformanceMetrics.bind(appStoreManager),
       getStorageInfo: appStoreManager.getStorageInfo.bind(appStoreManager)
     }
-  }), [auth, user, chat, theme, notification, modal, loading, error, managerState]);
+  }), [chat, theme, notification, modal, loading, error, managerState]);
 
   // @ts-expect-error - Type compatibility issue between ChatStore and expected interface
   return composedStore;
@@ -333,11 +305,6 @@ export const useAppStoreManager = () => {
 };
 
 // Utility hooks for specific store domains
-export const useAppAuth = () => {
-  const { auth } = useAppStore();
-  return auth;
-};
-
 export const useAppChat = () => {
   const { chat } = useAppStore();
   return chat;
@@ -360,7 +327,6 @@ export const useAppSelector = <T>(selector: (store: AppStore) => T): T => {
   return useMemo(() => {
     try {
       return selector({
-        auth: store.auth,
         chat: store.chat,
         ui: store.ui,
         shared: store.shared
@@ -374,10 +340,6 @@ export const useAppSelector = <T>(selector: (store: AppStore) => T): T => {
 
 // Common app-level selector functions (these return selector functions, not hook calls)
 export const appSelectors = {
-  // User state
-  isAuthenticated: (store: any) => store.auth.isAuthenticated,
-  currentUser: (store: any) => store.auth.user,
-  
   // Loading states
   isLoading: (key?: string) => (store: any) => 
     key ? store.shared.loading.isLoading(key) : store.shared.loading.globalLoading,
@@ -408,19 +370,13 @@ export const appSelectors = {
 // App-wide action creators
 export const appActions = {
   // Initialize app
-  initialize: async (userId?: string, options?: any) => {
-    return appStoreManager.initialize(userId, options);
+  initialize: async (options?: any) => {
+    return appStoreManager.initialize(options);
   },
   
   // Reset app
   reset: async () => {
     return appStoreManager.reset();
-  },
-  
-  // Authentication
-  signOut: async () => {
-    const authStore = useAuthStore.getState();
-    await authStore.signOut();
   }
 };
 

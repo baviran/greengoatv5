@@ -453,18 +453,13 @@ export class AirtableService {
             const recordData = {
                 'Thread ID': fields.threadId,
                 'Run ID': fields.runId,
-                'User ID': fields.userId || '',
-                'User Email': fields.userEmail || '',
-                'User Display Name': fields.userDisplayName || '',
                 'User Prompt': fields.userPrompt,
                 'Assistant Response': fields.assistantResponse,
                 'Tool Calls': fields.toolCalls ? JSON.stringify(fields.toolCalls) : '',
                 'Tool Outputs': fields.toolOutputs ? JSON.stringify(fields.toolOutputs) : '',
-                'Rating': fields.rating ?? '',
                 'QA Comment': fields.comment ?? '',
                 'Reviewed By': fields.reviewer ?? '',
-                'Timestamp': fields.timestamp || new Date().toISOString(),
-                'Session ID': fields.sessionId || ''
+                'Rating': fields.rating ?? ''
             };
 
             let record;

@@ -23,46 +23,57 @@ export class StorePersistence {
   }
 
   /**
-   * Generate storage key based on config and user context
+   * Generate storage key based on config
    */
-  private generateKey(config: PersistenceConfig, userId?: string): string {
-    const baseKey = `${this.prefix}${config.key}_v${config.version}`;
-    return config.userSpecific && userId ? `${baseKey}_${userId}` : baseKey;
+  private generateKey(config: PersistenceConfig): string {
+    return `${this.prefix}${config.key}_v${config.version}`;
   }
 
   /**
    * Get persisted state from storage
    */
-  getPersistedState<T>(config: PersistenceConfig, userId?: string): T | null {
+  getPersistedState<T>(config: PersistenceConfig): T | null {
     if (typeof window === 'undefined') return null;
 
     try {
-      const key = this.generateKey(config, userId);
+      const key = this.generateKey(config);
       const stored = this.storage.getItem(key);
       
       if (!stored) return null;
 
-      const parsedData = JSON.parse(stored);
+      let parsedState = JSON.parse(stored);
       
-      // Check if migration is needed
-      if (parsedData.version !== config.version && config.migrate) {
-        logger.info('Migrating persisted state', undefined, {
-          key,
-          fromVersion: parsedData.version,
-          toVersion: config.version
-        });
-        
-        const migratedData = config.migrate(parsedData.state, parsedData.version);
-        this.persistState(config, migratedData, userId);
-        return migratedData;
+      // Handle migration if needed
+      if (config.migrate && typeof config.migrate === 'function') {
+        parsedState = config.migrate(parsedState, config.version);
       }
 
-      return parsedData.state;
+      // Apply whitelist if specified
+      if (config.whitelist && config.whitelist.length > 0) {
+        const filteredState: any = {};
+        config.whitelist.forEach(key => {
+          if (key in parsedState) {
+            filteredState[key] = parsedState[key];
+          }
+        });
+        return filteredState as T;
+      }
+
+      // Apply blacklist if specified
+      if (config.blacklist && config.blacklist.length > 0) {
+        const filteredState = { ...parsedState };
+        config.blacklist.forEach(key => {
+          delete filteredState[key];
+        });
+        return filteredState as T;
+      }
+
+      return parsedState as T;
+
     } catch (error) {
-      logger.error('Error getting persisted state', error as Error, undefined, {
-        key: config.key,
-        userId,
-        userSpecific: config.userSpecific
+      logger.error('Failed to get persisted state', error, undefined, {
+        configKey: config.key,
+        version: config.version
       });
       return null;
     }
@@ -71,212 +82,219 @@ export class StorePersistence {
   /**
    * Persist state to storage
    */
-  persistState<T>(config: PersistenceConfig, state: T, userId?: string): void {
-    if (typeof window === 'undefined') return;
+  persistState<T>(config: PersistenceConfig, state: T): boolean {
+    if (typeof window === 'undefined') return false;
 
     try {
-      const key = this.generateKey(config, userId);
+      const key = this.generateKey(config);
       let stateToStore = state;
 
-      // Apply whitelist/blacklist filtering
-      if (config.whitelist || config.blacklist) {
-        stateToStore = this.filterState(state, config.whitelist, config.blacklist);
+      // Apply whitelist if specified
+      if (config.whitelist && config.whitelist.length > 0) {
+        const filteredState: any = {};
+        config.whitelist.forEach(key => {
+          if (state && typeof state === 'object' && key in state) {
+            filteredState[key] = (state as any)[key];
+          }
+        });
+        stateToStore = filteredState as T;
       }
 
-      const dataToStore = {
+      // Apply blacklist if specified
+      if (config.blacklist && config.blacklist.length > 0) {
+        const filteredState = { ...state };
+        config.blacklist.forEach(key => {
+          if (filteredState && typeof filteredState === 'object') {
+            delete (filteredState as any)[key];
+          }
+        });
+        stateToStore = filteredState;
+      }
+
+      this.storage.setItem(key, JSON.stringify(stateToStore));
+      
+      logger.debug('State persisted successfully', undefined, {
+        configKey: config.key,
         version: config.version,
-        state: stateToStore,
-        timestamp: Date.now()
-      };
-
-      this.storage.setItem(key, JSON.stringify(dataToStore));
-    } catch (error) {
-      logger.error('Error persisting state', error as Error, undefined, {
-        key: config.key,
-        userId,
-        userSpecific: config.userSpecific
+        dataSize: JSON.stringify(stateToStore).length
       });
+
+      return true;
+
+    } catch (error) {
+      logger.error('Failed to persist state', error, undefined, {
+        configKey: config.key,
+        version: config.version
+      });
+      return false;
     }
   }
 
   /**
-   * Filter state based on whitelist/blacklist
+   * Remove persisted state from storage
    */
-  private filterState<T>(state: T, whitelist?: string[], blacklist?: string[]): T {
-    if (!state || typeof state !== 'object') return state;
-
-    const filtered: any = {};
-    const keys = Object.keys(state);
-
-    for (const key of keys) {
-      const shouldInclude = whitelist ? whitelist.includes(key) : true;
-      const shouldExclude = blacklist ? blacklist.includes(key) : false;
-
-      if (shouldInclude && !shouldExclude) {
-        filtered[key] = (state as any)[key];
-      }
-    }
-
-    return filtered as T;
-  }
-
-  /**
-   * Clear persisted state
-   */
-  clearPersistedState(config: PersistenceConfig, userId?: string): void {
+  removePersistedState(config: PersistenceConfig): void {
     if (typeof window === 'undefined') return;
 
     try {
-      const key = this.generateKey(config, userId);
+      const key = this.generateKey(config);
       this.storage.removeItem(key);
+      
+      logger.debug('Persisted state removed', undefined, {
+        configKey: config.key,
+        version: config.version
+      });
+
     } catch (error) {
-      logger.error('Error clearing persisted state', error as Error, undefined, {
-        key: config.key,
-        userId,
-        userSpecific: config.userSpecific
+      logger.error('Failed to remove persisted state', error, undefined, {
+        configKey: config.key,
+        version: config.version
       });
     }
   }
 
   /**
-   * Clear all persisted states for a user
+   * Clear all persisted states with optional prefix filter
    */
-  clearUserData(userId: string): void {
+  clearAllPersistedStates(prefixFilter?: string): void {
     if (typeof window === 'undefined') return;
 
     try {
-      const keys = Object.keys(this.storage);
-      const userKeys = keys.filter(key => 
-        key.startsWith(this.prefix) && key.endsWith(`_${userId}`)
-      );
+      const keysToRemove: string[] = [];
+      const fullPrefix = prefixFilter ? `${this.prefix}${prefixFilter}` : this.prefix;
 
-      userKeys.forEach(key => this.storage.removeItem(key));
+      for (let i = 0; i < this.storage.length; i++) {
+        const key = this.storage.key(i);
+        if (key && key.startsWith(fullPrefix)) {
+          keysToRemove.push(key);
+        }
+      }
+
+      keysToRemove.forEach(key => this.storage.removeItem(key));
       
-      logger.info('Cleared user data from storage', undefined, {
-        userId,
-        keysCleared: userKeys.length
+      logger.info('Cleared persisted states', undefined, {
+        removedCount: keysToRemove.length,
+        prefixFilter: prefixFilter || 'all'
       });
+
     } catch (error) {
-      logger.error('Error clearing user data', error as Error, undefined, {
-        userId
+      logger.error('Failed to clear persisted states', error, undefined, {
+        prefixFilter: prefixFilter || 'all'
       });
     }
   }
 
   /**
-   * Get storage usage info
+   * Get storage information
    */
-  getStorageInfo(): { usedSpace: number; totalSpace: number; keys: string[] } {
+  getStorageInfo(): {
+    prefix: string;
+    totalKeys: number;
+    appKeys: number;
+    totalSize: number;
+    appSize: number;
+  } {
     if (typeof window === 'undefined') {
-      return { usedSpace: 0, totalSpace: 0, keys: [] };
+      return {
+        prefix: this.prefix,
+        totalKeys: 0,
+        appKeys: 0,
+        totalSize: 0,
+        appSize: 0
+      };
     }
+
+    let totalKeys = 0;
+    let appKeys = 0;
+    let totalSize = 0;
+    let appSize = 0;
 
     try {
-      const keys = Object.keys(this.storage);
-      const storeKeys = keys.filter(key => key.startsWith(this.prefix));
-      
-      let usedSpace = 0;
-      storeKeys.forEach(key => {
-        const value = this.storage.getItem(key);
-        if (value) {
-          usedSpace += key.length + value.length;
-        }
-      });
+      for (let i = 0; i < this.storage.length; i++) {
+        const key = this.storage.key(i);
+        if (key) {
+          totalKeys++;
+          const value = this.storage.getItem(key) || '';
+          const size = key.length + value.length;
+          totalSize += size;
 
-      return {
-        usedSpace,
-        totalSpace: 10 * 1024 * 1024, // 10MB typical localStorage limit
-        keys: storeKeys
-      };
+          if (key.startsWith(this.prefix)) {
+            appKeys++;
+            appSize += size;
+          }
+        }
+      }
     } catch (error) {
-      logger.error('Error getting storage info', error as Error);
-      return { usedSpace: 0, totalSpace: 0, keys: [] };
+      logger.error('Failed to get storage info', error);
     }
+
+    return {
+      prefix: this.prefix,
+      totalKeys,
+      appKeys,
+      totalSize,
+      appSize
+    };
   }
 }
 
-// Default persistence configs for each store
-export const persistenceConfigs: Record<string, PersistenceConfig> = {
-  auth: {
-    key: 'auth',
+// Default persistence configurations for different stores
+export const persistenceConfigs = {
+  // Theme store persistence
+  theme: {
+    key: 'theme',
     version: 1,
-    whitelist: ['user', 'isAuthenticated'],
-    userSpecific: false
-  },
-  user: {
-    key: 'user',
+    whitelist: ['theme']
+  } as PersistenceConfig,
+
+  // Notification store persistence
+  notification: {
+    key: 'notification',
     version: 1,
-    whitelist: ['preferences'],
-    userSpecific: true
-  },
-  thread: {
-    key: 'threads',
+    whitelist: ['isEnabled']
+  } as PersistenceConfig,
+
+  // Chat store persistence
+  chat: {
+    key: 'chat',
+    version: 1,
+    blacklist: ['isLoading', 'isSending', 'error']
+  } as PersistenceConfig,
+
+  // Generic store persistence with migration example
+  migrated: {
+    key: 'migrated_store',
     version: 2,
-    whitelist: ['threads', 'activeThreadId'],
-    userSpecific: true,
     migrate: (persistedState: any, version: number) => {
-      // Migration logic for threads
-      if (version === 1) {
+      if (version < 2) {
+        // Handle migration from v1 to v2
         return {
           ...persistedState,
-          threads: persistedState.threads?.map((thread: any) => ({
-            ...thread,
-            metadata: thread.metadata || {}
-          })) || []
+          migratedAt: Date.now()
         };
       }
       return persistedState;
     }
-  },
-  theme: {
-    key: 'theme',
-    version: 1,
-    whitelist: ['theme'],
-    userSpecific: false
-  },
-  notification: {
-    key: 'notifications',
-    version: 1,
-    whitelist: ['isEnabled'],
-    userSpecific: true
-  },
-  modal: {
-    key: 'modal',
-    version: 1,
-    blacklist: ['activeModal', 'modalData', 'modalStack'],
-    userSpecific: false
-  }
+  } as PersistenceConfig
 };
 
-// Utility function to create persistence middleware
-export function createPersistenceMiddleware<T>(
-  config: PersistenceConfig,
-  getUserId: () => string | undefined
-) {
-  const persistence = StorePersistence.getInstance();
+// Export singleton instance
+export const storePersistence = StorePersistence.getInstance();
 
-  return (storeInitializer: any) => (set: any, get: any, api: any) => {
-    const store = storeInitializer(
-      (...args: any[]) => {
-        set(...args);
-        // Persist state after each update
-        const currentState = get();
-        const userId = getUserId();
-        persistence.persistState(config, currentState, userId);
-      },
-      get,
-      api
-    );
+// Convenience functions
+export function getPersistedState<T>(config: PersistenceConfig): T | null {
+  return storePersistence.getPersistedState<T>(config);
+}
 
-    // Load persisted state on initialization
-    const userId = getUserId();
-    const persistedState = persistence.getPersistedState<T>(config, userId);
-    
-    if (persistedState) {
-      set(persistedState);
-    }
+export function persistState<T>(config: PersistenceConfig, state: T): boolean {
+  return storePersistence.persistState(config, state);
+}
 
-    return store;
-  };
+export function removePersistedState(config: PersistenceConfig): void {
+  storePersistence.removePersistedState(config);
+}
+
+export function clearAllPersistedStates(prefixFilter?: string): void {
+  storePersistence.clearAllPersistedStates(prefixFilter);
 }
 
