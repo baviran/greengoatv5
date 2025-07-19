@@ -7,69 +7,47 @@
 - **Sanitize user input before logging**
 - **Use structured logging format: timestamp, level, message, context**
 
-### Authentication Security
-- **Always validate user authentication before accessing protected resources**
-- **Use Firebase auth tokens for API authentication**
-- **Include user context in all authenticated operations**
-
-### Data Isolation
-- **Users can only access their own data**
-- **Filter all queries by authenticated user**
-- **Validate user ownership before modifications**
+### API Security
+- **Always validate input data before processing**
+- **Use structured error handling for security issues**
+- **Include request context in all operations**
 
 ### Security Examples
 ```typescript
 // ✅ Good - sanitized logging
-logger.info('User login attempt', { 
-  userId: user.uid, 
-  email: user.email?.substring(0, 3) + '***' 
+logger.info('Request processed', { 
+  requestId: req.id, 
+  endpoint: '/api/data'
 });
 
 // ❌ Bad - sensitive data logged
-logger.info('User login', { 
+logger.info('Request data', { 
   password: userData.password,
-  token: authToken
+  token: apiToken
 });
 
-// ✅ Good - user validation
-const validateUserAccess = (userId: string, resourceUserId: string) => {
-  if (userId !== resourceUserId) {
-    throw new AuthorizationError('Access denied');
+// ✅ Good - input validation
+const validateInput = (data: any) => {
+  if (!data || typeof data !== 'object') {
+    throw new ValidationError('Invalid data format');
   }
 };
 
-// ✅ Good - data filtering
-const getUserThreads = (userId: string) => {
-  return threads.filter(thread => thread.userId === userId);
+// ✅ Good - data sanitization
+const sanitizeInput = (userInput: string) => {
+  return userInput.trim().slice(0, 1000); // Limit length
 };
 ```
 
 ### Input Sanitization
 ```typescript
 // ✅ Good - sanitized input logging
-logger.info('Processing user input', {
-  userId: user.uid,
+logger.info('Processing request input', {
   inputLength: userInput.length,
-  inputType: typeof userInput
+  inputType: typeof userInput,
+  component: 'input-processor'
 });
 
 // ❌ Bad - raw user input in logs
-logger.info('User input received', { input: userInput });
-```
-
-### Token Security
-```typescript
-// ✅ Good - token validation
-const validateToken = async (token: string) => {
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    return decodedToken;
-  } catch (error) {
-    logger.error('Token validation failed', error, { component: 'auth' });
-    throw new AuthenticationError('Invalid token');
-  }
-};
-
-// ❌ Bad - token in logs
-logger.info('Token received', { token: authToken });
+logger.info('Raw input received', { input: userInput });
 ```

@@ -2,16 +2,17 @@
 
 ## 🟡 API Route Standards
 
-### Authentication Context
+### API Response Standards
 ```typescript
-// ✅ Use enhanced auth middleware
-export const POST = withAuth(async (req, authResult) => {
-  const { user, context } = authResult;
-  const logger = Logger.getInstance().withContext(context);
-  
-  logger.info('API request started', { endpoint: '/api/users' });
-  // ... handler code
-});
+// ✅ Use enhanced response middleware
+export const POST = withApiResponse('component-name', 'action-name')(
+  async (req: NextRequest, context: RequestContext) => {
+    const logger = Logger.getInstance().withContext(context);
+    
+    logger.info('API request started', { endpoint: '/api/data' });
+    // ... handler code
+  }
+);
 ```
 
 ### Request Logging
@@ -37,9 +38,7 @@ export const POST = withRequestContext(async (req, context) => {
 ```typescript
 // ✅ Good - use withApiResponse middleware
 export const GET = withApiResponse('component-name', 'action-name')(
-  async (request: NextRequest, authResult: AuthResultWithContext) => {
-    const { user, context } = authResult;
-    
+  async (request: NextRequest, context: RequestContext) => {
     // Your logic here
     const data = await getDataFromService();
     
@@ -48,11 +47,11 @@ export const GET = withApiResponse('component-name', 'action-name')(
   }
 );
 
-// ❌ Bad - manual auth and response handling
-export const GET = withAuth(async (request: NextRequest, authResult) => {
+// ❌ Bad - manual response handling
+export const GET = async (request: NextRequest) => {
   // Manual response handling without unified format
   return NextResponse.json({ data: result });
-});
+};
 ```
 
 ### Complete API Route Example

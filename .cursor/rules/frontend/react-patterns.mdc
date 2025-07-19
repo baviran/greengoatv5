@@ -8,64 +8,64 @@
 ```typescript
 // ✅ Good - stable dependencies
 useEffect(() => {
-  const checkUserValidation = async () => {
-    // validation logic
+  const processData = async () => {
+    // processing logic
   };
   
-  if (user && requireAuth && isInitialized) {
-    checkUserValidation();
+  if (data && isInitialized) {
+    processData();
   }
-}, [user, requireAuth, isInitialized]); // Only include stable values
+}, [data, isInitialized]); // Only include stable values
 
 // ❌ Bad - function in dependencies
 useEffect(() => {
-  if (user) {
-    getIdToken(); // Function recreated every render
+  if (data) {
+    processData(); // Function recreated every render
   }
-}, [user, getIdToken]); // Causes unnecessary re-runs
+}, [data, processData]); // Causes unnecessary re-runs
 ```
 
 #### Performance-Critical Hooks
 ```typescript
 // ✅ Good - avoid excessive API calls
 useEffect(() => {
-  const updateToken = async () => {
-    if (user) { // Only when user actually changes
-      const token = await getIdToken();
-      // Update token
+  const updateData = async () => {
+    if (id) { // Only when id actually changes
+      const data = await fetchData(id);
+      // Update data
     }
   };
-  updateToken();
-}, [user]); // Not [getIdToken]
+  updateData();
+}, [id]); // Not [fetchData]
 
 // ❌ Bad - function dependency causes re-runs
 useEffect(() => {
-  updateToken();
-}, [updateToken]); // Recreated every render
+  updateData();
+}, [updateData]); // Recreated every render
 ```
 
-### Authentication Timing Issues
+### Component Initialization Patterns
 ```typescript
 // ✅ Good - wait for store initialization
-const { user, isLoading, isInitialized } = useAppAuth();
+const { data, isLoading, isInitialized } = useAppStore();
 
 useEffect(() => {
   if (!isInitialized) {
-    setValidationStatus('loading');
+    setStatus('loading');
     return;
   }
   
-  if (user && requireAuth && isInitialized) {
-    validateUser();
+  if (data && isInitialized) {
+    processData();
   }
-}, [user, requireAuth, isInitialized]);
+}, [data, isInitialized]);
 
-// ❌ Bad - immediate validation without waiting
+// ❌ Bad - immediate processing without waiting
 useEffect(() => {
-  if (user) {
-    validateUser(); // May run before Firebase is ready
+  if (data) {
+    processData(); // May run before store is ready
   }
-}, [user]);
+}, [data]);
 ```
 
 ### Cache Management Patterns
@@ -96,12 +96,12 @@ useEffect(() => {
 
 #### Cache Invalidation
 ```typescript
-// ✅ Good - clear cache when user changes
+// ✅ Good - clear cache when data changes
 useEffect(() => {
-  if (user?.uid) {
-    userValidationCache.delete(user.uid);
+  if (dataId) {
+    dataCache.delete(dataId);
   }
-}, [user?.uid]);
+}, [dataId]);
 
 // ❌ Bad - stale cache data
 // No cache invalidation strategy
@@ -109,89 +109,61 @@ useEffect(() => {
 
 ### Error Recovery Patterns
 
-#### Retry Logic for Authentication
+#### General Retry Logic
 ```typescript
 // ✅ Good - retry with backoff
-const getIdToken = async () => {
+const apiCall = async (retries = 1) => {
   try {
-    const { auth } = await import('@/lib/firebase');
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      return await currentUser.getIdToken(true);
-    }
-    return null;
+    const response = await fetch('/api/data');
+    if (!response.ok) throw new Error('API Error');
+    return await response.json();
   } catch (error) {
-    // Retry once after delay
-    setTimeout(async () => {
-      try {
-        const retryToken = await currentUser?.getIdToken(true);
-        if (retryToken) {
-          return retryToken;
+    if (retries > 0) {
+      // Retry once after delay
+      setTimeout(async () => {
+        try {
+          return await apiCall(retries - 1);
+        } catch (retryError) {
+          logger.error('API retry failed', retryError);
         }
-      } catch (retryError) {
-        logger.error('Token retry failed', retryError);
-      }
-    }, 2000);
-    return null;
+      }, 2000);
+    }
+    throw error;
   }
 };
 
 // ❌ Bad - no retry logic
-const getIdToken = async () => {
-  return auth.currentUser?.getIdToken(true);
+const apiCall = async () => {
+  return fetch('/api/data').then(res => res.json());
 };
 ```
 
-### Firebase Integration Patterns
+### Component Patterns
 
-#### Authentication State Synchronization
+#### Store Integration
 ```typescript
-// ✅ Good - Firebase auth listener setup
+// ✅ Good - store listener setup
 if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    authStore.getState().initialize();
-    
-    const setupFirebaseAuthListener = async () => {
-      const { auth } = await import('@/lib/firebase');
-      const { onAuthStateChanged } = await import('firebase/auth');
-      
-      onAuthStateChanged(auth, (firebaseUser) => {
-        const authState = authStore.getState();
-        if (firebaseUser) {
-          authState.setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-            emailVerified: firebaseUser.emailVerified,
-            token: null
-          });
-        } else {
-          authState.setUser(null);
-        }
-      });
-    };
-    
-    setupFirebaseAuthListener();
-  }, 100);
+  const setupStoreListener = () => {
+    // Set up store event listeners for data changes
+    store.subscribe((state) => {
+      // Handle state changes
+      updateComponent(state);
+    });
+  };
+  
+  setupStoreListener();
 }
 
-// ❌ Bad - direct Firebase usage without store sync
-onAuthStateChanged(auth, (user) => {
-  // Manual state management without store
-});
+// ❌ Bad - direct state manipulation without store
+updateState({ data: newData }); // Manual state management
 ```
 
 ### Component Composition Patterns
 ```typescript
 // ✅ Good - component composition
 const ChatInterface: React.FC = () => {
-  const { user } = useAppAuth();
   const { activeThreadId } = useAppChat();
-  
-  if (!user) {
-    return <AuthRequired />;
-  }
   
   return (
     <div className="chat-interface">

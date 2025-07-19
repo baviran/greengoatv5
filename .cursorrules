@@ -5,7 +5,7 @@
 ### Logging Standards
 - **Never use console.log, console.error, console.warn, or console.debug**
 - **Always use Logger.getInstance() for logging**
-- **Include context object with userId, requestId, component, action when available**
+- **Include context object with requestId, component, action when available**
 - **Use appropriate log levels:**
   - `debug` for development debugging
   - `info` for business logic and normal flow
@@ -17,12 +17,11 @@
 // ✅ Good - with context
 const logger = Logger.getInstance();
 const context = {
-  userId: user.uid,
   requestId: req.headers.get('x-request-id'),
   component: 'user-service',
   action: 'create-user'
 };
-logger.info('User created successfully', context, { email: user.email });
+logger.info('User operation completed successfully', context);
 
 // ❌ Bad - without context
 console.log('User created successfully');
@@ -58,16 +57,17 @@ catch (error) {
 
 ## 🟡 API Route Rules
 
-### Authentication Context
+### API Response Standards
 ```typescript
-// ✅ Use enhanced auth middleware
-export const POST = withAuth(async (req, authResult) => {
-  const { user, context } = authResult;
-  const logger = Logger.getInstance().withContext(context);
-  
-  logger.info('API request started', { endpoint: '/api/users' });
-  // ... handler code
-});
+// ✅ Use enhanced response middleware
+export const POST = withApiResponse('component-name', 'action-name')(
+  async (req: NextRequest, context: RequestContext) => {
+    const logger = Logger.getInstance().withContext(context);
+    
+    logger.info('API request started', { endpoint: '/api/users' });
+    // ... handler code
+  }
+);
 ```
 
 ### Request Logging
@@ -220,10 +220,9 @@ Before submitting code:
 ### Store Import Patterns
 ```typescript
 // ✅ Good - unified store usage
-import { useAppStore, useAppAuth, useAppChat, useAppSelector } from '@/app/lib/store/appStore';
+import { useAppStore, useAppChat, useAppSelector } from '@/app/lib/store/appStore';
 
 // ✅ Good - domain-specific hooks
-const { user, isAuthenticated } = useAppAuth();
 const { activeThreadId, sendMessage } = useAppChat();
 
 // ✅ Good - performance-optimized selectors
@@ -241,12 +240,8 @@ import { useThemeStore } from './lib/store/themeStore';
 const { manager } = useAppStore();
 
 useEffect(() => {
-  if (user) {
-    manager.initialize(user.uid);
-  } else {
-    manager.initialize();
-  }
-}, [manager, user]);
+  manager.initialize();
+}, [manager]);
 
 // ❌ Bad - manual store initialization
 useEffect(() => {
@@ -276,10 +271,6 @@ const { auth, chat, ui, shared } = useAppStore();
 // ✅ Good - use app actions for cross-store operations
 import { appActions } from '@/app/lib/store/appStore';
 
-const handleSignOut = async () => {
-  await appActions.signOut();
-};
-
 const showSuccessMessage = (message: string) => {
   appActions.showSuccess('Success', message);
 };
@@ -307,17 +298,7 @@ const handleReset = async () => {
 
 ### Domain Store Guidelines
 
-#### Auth Domain
-```typescript
-// ✅ Good - auth operations
-const { user, isAuthenticated, isLoading } = useAppAuth();
 
-// For Firebase operations, use helper functions
-const getIdToken = async () => {
-  const { auth } = await import('@/lib/firebase');
-  return auth.currentUser?.getIdToken(true);
-};
-```
 
 #### Chat Domain
 ```typescript
@@ -351,11 +332,7 @@ appActions.showSuccess('Title', 'Message');
 ```typescript
 // ❌ Old Pattern -> ✅ New Pattern
 
-// Auth usage
-- import { useAuthContext } from '@/context/auth-context';
-- const { user, loading, signOut } = useAuthContext();
-+ import { useAppAuth } from '@/app/lib/store/appStore';
-+ const { user, isLoading, isAuthenticated } = useAppAuth();
+
 
 // Theme usage
 - import { useThemeStore } from './lib/store/themeStore';
@@ -382,14 +359,13 @@ appActions.showSuccess('Title', 'Message');
 useEffect(() => {
   initializeTheme();
   initializeStore();
-  initializeAuth();
 }, []);
 
 // ✅ New initialization
 const { manager } = useAppStore();
 useEffect(() => {
-  manager.initialize(user?.uid);
-}, [manager, user]);
+  manager.initialize();
+}, [manager]);
 ```
 
 #### Error Handling Migration
@@ -630,7 +606,7 @@ const theme = useAppSelector(store => store.theme.theme);
 - [ ] Update initialization patterns to use app store manager
 - [ ] Convert local state to store selectors where appropriate
 - [ ] Replace manual error/loading handling with store patterns
-- [ ] Update Firebase auth operations to use helper functions
+
 - [ ] Test component functionality after migration
 - [ ] Remove old store dependencies once verified
 
@@ -646,137 +622,53 @@ const metrics = manager.getPerformanceMetrics();
 const storageInfo = manager.getStorageInfo();
 ```
 
-### Common Migration Issues & Solutions
 
-#### Issue: Type Mismatches
+
+### Performance Guidelines
+
+#### General Performance Patterns
 ```typescript
-// ❌ Problem: Old user type vs new user type
-const { user } = useAuthContext(); // UserContext | null
-
-// ✅ Solution: Use new auth store
-const { user } = useAppAuth(); // AuthState.user
-```
-
-#### Issue: Missing Properties
-```typescript
-// ❌ Problem: Property doesn't exist on new store
-const { loading } = useAuthContext();
-
-// ✅ Solution: Use correct property name
-const { isLoading } = useAppAuth();
-```
-
-#### Issue: Complex Operations
-```typescript
-// ❌ Problem: Complex operation not in new store
-const { complexChatOperation } = useChatStore();
-
-// ✅ Solution: Keep using specific store temporarily
-const { complexChatOperation } = useAuthenticatedChatStore();
-const { user } = useAppAuth(); // For simple auth needs
-```
-
-### Firebase Integration Patterns
-
-#### Authentication State Synchronization
-```typescript
-// ✅ Good - Firebase auth listener setup
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    authStore.getState().initialize();
-    
-    const setupFirebaseAuthListener = async () => {
-      const { auth } = await import('@/lib/firebase');
-      const { onAuthStateChanged } = await import('firebase/auth');
-      
-      onAuthStateChanged(auth, (firebaseUser) => {
-        const authState = authStore.getState();
-        if (firebaseUser) {
-          authState.setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-            emailVerified: firebaseUser.emailVerified,
-            token: null
-          });
-        } else {
-          authState.setUser(null);
-        }
-      });
-    };
-    
-    setupFirebaseAuthListener();
-  }, 100);
+// ✅ Good - performance monitoring
+export function monitorStorePerformance(storeName: string) {
+  return function<T extends Record<string, any>>(store: T): T {
+    logger.debug('Performance monitoring enabled for store', undefined, { storeName });
+    return store; // Non-intrusive monitoring
+  };
 }
-
-// ❌ Bad - direct Firebase usage without store sync
-onAuthStateChanged(auth, (user) => {
-  // Manual state management without store
-});
 ```
 
-#### Authentication Timing Issues
+#### Component Performance
 ```typescript
-// ✅ Good - wait for store initialization
-const { user, isLoading, isInitialized } = useAppAuth();
-
+// ✅ Good - structured component debugging
 useEffect(() => {
-  if (!isInitialized) {
-    setValidationStatus('loading');
-    return;
-  }
-  
-  if (user && requireAuth && isInitialized) {
-    validateUser();
-  }
-}, [user, requireAuth, isInitialized]);
-
-// ❌ Bad - immediate validation without waiting
-useEffect(() => {
-  if (user) {
-    validateUser(); // May run before Firebase is ready
-  }
-}, [user]);
+  logger.debug('Component state changed', undefined, {
+    component: 'my-component',
+    hasData: !!data,
+    isLoading
+  });
+}, [data, isLoading]);
 ```
 
 ### Cache Management Patterns
 
-#### User Validation Caching
+#### General Caching
 ```typescript
-// ✅ Good - cache validation results
-const userValidationCache = new Map<string, {
-  status: UserValidationStatus;
-  error: string;
+// ✅ Good - cache with expiration
+const dataCache = new Map<string, {
+  data: any;
   timestamp: number;
 }>();
 
-const VALIDATION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Check cache first
-const cached = userValidationCache.get(user.uid);
-if (cached && (Date.now() - cached.timestamp) < VALIDATION_CACHE_DURATION) {
-  setUserValidationStatus(cached.status);
-  return;
+const cached = dataCache.get(key);
+if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+  return cached.data;
 }
 
-// ❌ Bad - repeated validation calls
-useEffect(() => {
-  validateUser(); // Runs every time
-}, [user]);
-```
-
-#### Cache Invalidation
-```typescript
-// ✅ Good - clear cache when user changes
-useEffect(() => {
-  if (user?.uid) {
-    userValidationCache.delete(user.uid);
-  }
-}, [user?.uid]);
-
-// ❌ Bad - stale cache data
-// No cache invalidation strategy
+// ❌ Bad - no caching strategy
+// Fetch data every time
 ```
 
 ### React Hook Dependency Management
@@ -785,75 +677,70 @@ useEffect(() => {
 ```typescript
 // ✅ Good - stable dependencies
 useEffect(() => {
-  const checkUserValidation = async () => {
-    // validation logic
+  const processData = async () => {
+    // processing logic
   };
   
-  if (user && requireAuth && isInitialized) {
-    checkUserValidation();
+  if (data && isInitialized) {
+    processData();
   }
-}, [user, requireAuth, isInitialized]); // Only include stable values
+}, [data, isInitialized]); // Only include stable values
 
 // ❌ Bad - function in dependencies
 useEffect(() => {
-  if (user) {
-    getIdToken(); // Function recreated every render
+  if (data) {
+    processData(); // Function recreated every render
   }
-}, [user, getIdToken]); // Causes unnecessary re-runs
+}, [data, processData]); // Causes unnecessary re-runs
 ```
 
 #### Performance-Critical Hooks
 ```typescript
 // ✅ Good - avoid excessive API calls
 useEffect(() => {
-  const updateToken = async () => {
-    if (user) { // Only when user actually changes
-      const token = await getIdToken();
-      // Update token
+  const updateData = async () => {
+    if (id) { // Only when id actually changes
+      const data = await fetchData(id);
+      // Update data
     }
   };
-  updateToken();
-}, [user]); // Not [getIdToken]
+  updateData();
+}, [id]); // Not [fetchData]
 
 // ❌ Bad - function dependency causes re-runs
 useEffect(() => {
-  updateToken();
-}, [updateToken]); // Recreated every render
+  updateData();
+}, [updateData]); // Recreated every render
 ```
 
 ### Error Recovery Patterns
 
-#### Retry Logic for Authentication
+#### General Retry Logic
 ```typescript
 // ✅ Good - retry with backoff
-const getIdToken = async () => {
+const apiCall = async (retries = 1) => {
   try {
-    const { auth } = await import('@/lib/firebase');
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      return await currentUser.getIdToken(true);
-    }
-    return null;
+    const response = await fetch('/api/data');
+    if (!response.ok) throw new Error('API Error');
+    return await response.json();
   } catch (error) {
-    // Retry once after delay
-    setTimeout(async () => {
-      try {
-        const retryToken = await currentUser?.getIdToken(true);
-        if (retryToken) {
-          // Success on retry
-          return retryToken;
+    if (retries > 0) {
+      // Retry once after delay
+      setTimeout(async () => {
+        try {
+          return await apiCall(retries - 1);
+        } catch (retryError) {
+          logger.error('API retry failed', retryError);
         }
-      } catch (retryError) {
-        logger.error('Token retry failed', retryError);
-      }
-    }, 2000);
-    return null;
+      }, 2000);
+    }
+    throw error;
   }
 };
 
 // ❌ Bad - no retry logic
-const getIdToken = async () => {
-  return auth.currentUser?.getIdToken(true);
+const apiCall = async () => {
+  return fetch('/api/data').then(res => res.json());
 };
 ```
 
@@ -862,19 +749,19 @@ const getIdToken = async () => {
 #### Store State Debugging
 ```typescript
 // ✅ Good - structured debugging
-const { user, isLoading, isInitialized } = useAppAuth();
+const { data, isLoading, isInitialized } = useAppStore();
 
 useEffect(() => {
-  logger.debug('Auth state changed', undefined, {
-    hasUser: !!user,
+  logger.debug('Store state changed', undefined, {
+    hasData: !!data,
     isLoading,
     isInitialized,
-    userId: user?.uid
+    component: 'my-component'
   });
-}, [user, isLoading, isInitialized]);
+}, [data, isLoading, isInitialized]);
 
 // ❌ Bad - minimal debugging
-console.log(user); // Not helpful for complex state
+console.log(data); // Not helpful for complex state
 ```
 
 #### Performance Monitoring

@@ -11,17 +11,15 @@
 ### Store Import Patterns
 ```typescript
 // ✅ Good - unified store usage
-import { useAppStore, useAppAuth, useAppChat, useAppSelector } from '@/app/lib/store/appStore';
+import { useAppStore, useAppChat, useAppSelector } from '@/app/lib/store/appStore';
 
 // ✅ Good - domain-specific hooks
-const { user, isAuthenticated } = useAppAuth();
 const { activeThreadId, sendMessage } = useAppChat();
 
 // ✅ Good - performance-optimized selectors
 const isLoading = useAppSelector(store => store.loading.globalLoading);
 
 // ❌ Bad - old individual store imports
-import { useAuthContext } from '@/context/auth-context';
 import { useChatStore } from './lib/store/chatStore';
 import { useThemeStore } from './lib/store/themeStore';
 ```
@@ -32,12 +30,8 @@ import { useThemeStore } from './lib/store/themeStore';
 const { manager } = useAppStore();
 
 useEffect(() => {
-  if (user) {
-    manager.initialize(user.uid);
-  } else {
-    manager.initialize();
-  }
-}, [manager, user]);
+  manager.initialize();
+}, [manager]);
 
 // ❌ Bad - manual store initialization
 useEffect(() => {
@@ -59,17 +53,13 @@ const activeThread = useAppSelector(store =>
 const { activeThreadId, sendMessage } = useAppChat();
 
 // ❌ Bad - accessing entire store unnecessarily
-const { auth, chat, ui, shared } = useAppStore();
+const { chat, ui, shared } = useAppStore();
 ```
 
 ### Store Event Handling
 ```typescript
 // ✅ Good - use app actions for cross-store operations
 import { appActions } from '@/app/lib/store/appStore';
-
-const handleSignOut = async () => {
-  await appActions.signOut();
-};
 
 const showSuccessMessage = (message: string) => {
   appActions.showSuccess('Success', message);
@@ -98,17 +88,7 @@ const handleReset = async () => {
 
 ### Domain Store Guidelines
 
-#### Auth Domain
-```typescript
-// ✅ Good - auth operations
-const { user, isAuthenticated, isLoading } = useAppAuth();
 
-// For Firebase operations, use helper functions
-const getIdToken = async () => {
-  const { auth } = await import('@/lib/firebase');
-  return auth.currentUser?.getIdToken(true);
-};
-```
 
 #### Chat Domain
 ```typescript
@@ -121,8 +101,7 @@ const {
   setActiveThread 
 } = useAppChat();
 
-// Use existing useAuthenticatedChatStore for complex operations
-const { submitFeedback } = useAuthenticatedChatStore();
+// Use chat store for all chat operations
 ```
 
 #### UI Domain
